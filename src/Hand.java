@@ -1,7 +1,7 @@
 import java.util.ArrayList;
 
 public class Hand {
-	private final ArrayList<CluedCard> cards;
+	private ArrayList<CluedCard> cards;
 	
 	public Hand() {
 		cards = new ArrayList<CluedCard>();
@@ -9,6 +9,16 @@ public class Hand {
 	
 	public void draw(Card card) {
 		cards.add(new CluedCard(card));
+	}
+	
+	public ArrayList<Card> reset() {
+		ArrayList<Card> toReturn = new ArrayList<Card>();
+		for (CluedCard c : cards) {
+			toReturn.add(c.card);
+		}
+		cards = new ArrayList<CluedCard>();
+		
+		return toReturn;
 	}
 	
 	public Card discard(int pos) {
