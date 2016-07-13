@@ -1,14 +1,14 @@
+package main.players;
+import main.HanabiGame;
+
 public abstract class Player {
-	private int playerNum;
-	private HanabiGame game;
+	int playerNum;
 	
 	public Player(int playerNum) {
 		this.playerNum = playerNum;
 	}
 	
-	public void init(HanabiGame g) {
-		game = g;
-	}
+	public abstract void init(HanabiGame g);
 	
 	public abstract int[] move();
 	

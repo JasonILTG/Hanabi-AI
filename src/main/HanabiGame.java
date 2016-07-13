@@ -1,17 +1,20 @@
+package main;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
+import main.enums.Color;
+import main.enums.Number;
+import main.parts.Card;
+import main.parts.Deck;
+import main.parts.Hand;
+import main.parts.PlayStack;
+import main.players.Player;
+
 public class HanabiGame {
 	private static final Random rand = new Random();
 	
-	public static final int NORMAL = 0;
-	public static final int RAINBOW = 1;
-	public static final int RAINBOW_HARD = 2;
-	public static final int MULTI = 3;
-	public static final int MULTI_HARD = 4;
-	
-	public static final int[] HAND_SIZES = { 0, 0, 5, 5, 4, 4 };
+	public static final int[] HAND_SIZES = { 0, 0, 7, 5, 4, 4 };
 	
 	public static final int PLAY = 0;
 	public static final int DISCARD = 1;
@@ -19,10 +22,10 @@ public class HanabiGame {
 	
 	public static final int COLOR = 0;
 	
-	public final int mode;
+	public final GameMode mode;
 	int clues;
 	int lives;
-	HashMap<Integer, PlayStack> stacks;
+	HashMap<Color, PlayStack> stacks;
 	Player[] players;
 	Hand[] hands;
 	Deck deck;
@@ -32,44 +35,19 @@ public class HanabiGame {
 	boolean lastTurn;
 	int lastPlayer;
 	
-	public HanabiGame(int mode, Player[] players) {
+	public HanabiGame(GameMode mode, Player[] players) {
 		this.mode = mode;
 		this.players = players;
 		
-		int addColor = 0;
-		if (mode == NORMAL) {
-			stacks = new HashMap<Integer, PlayStack>();
-			for (int i = 1; i <= 5; i++) {
-				stacks.put(i, new PlayStack(i));
-			}
-		} else if (mode <= RAINBOW_HARD) {
-			stacks = new HashMap<Integer, PlayStack>();
-			for (int i = 1; i <= 6; i++) {
-				stacks.put(i, new PlayStack(i));
-			}
-			
-			addColor = Card.RAINBOW;
-		} else {
-			stacks = new HashMap<Integer, PlayStack>();
-			for (int i = 1; i <= 5; i++) {
-				stacks.put(i, new PlayStack(i));
-			}
-			stacks.put(Card.MULTI, new PlayStack(Card.MULTI));
-			
-			addColor = Card.MULTI;
+		stacks = new HashMap<Color, PlayStack>();
+		for (Color color : Color.STANDARD) {
+			stacks.put(color, new PlayStack(color));
 		}
 		
-		if (mode == NORMAL) {
+		if (mode == GameMode.NORMAL) {
 			deck = new Deck();
 		} else {
-			int[] addNums = mode % 2 == 1 ? Deck.STD_DIST : Deck.HARD_DIST;
-			
-			Card[] add = new Card[addNums.length];
-			for (int i = 0; i < add.length; i++) {
-				add[i] = new Card(addColor, addNums[i]);
-			}
-			
-			deck = new Deck(add);
+			deck = new Deck(mode.extraColor, mode.hard);
 		}
 		
 		deck.shuffle();
@@ -107,7 +85,7 @@ public class HanabiGame {
 	public int start() {
 		message("GAME START: Player " + currPlayer + " to move.");
 		
-		while (!deck.empty()) {
+		while (!deck.isEmpty()) {
 			if (!turn()) {
 				return gameOver();
 			}
@@ -132,18 +110,6 @@ public class HanabiGame {
 	}
 	
 	private boolean interpretMove(int[] move) {
-		if (move[0] == PLAY) {
-			play(move[1]);
-		} else if (move[0] == DISCARD) {
-			discard(move[1]);
-		} else {
-			if (move[1] == COLOR) {
-				clueColor(move[2], move[3]);
-			} else {
-				clueNumber(move[2], move[3]);
-			}
-		}
-		
 		return lives > 0 && (!lastTurn || currPlayer != lastPlayer);
 	}
 	
@@ -151,10 +117,11 @@ public class HanabiGame {
 		Card c = hands[currPlayer].discard(pos);
 		Card d = deck.draw();
 		hands[currPlayer].draw(d);
+		
 		if (!stacks.get(c.color).play(c)) {
 			lives--;
 			discard.add(c);
-		} else if (c.number == 5) {
+		} else if (c.number == Number.FIVE) {
 			clues++;
 		}
 		
@@ -171,15 +138,11 @@ public class HanabiGame {
 		message("Player " + currPlayer + " has discarded a " + c + " and drawn a " + d + ".", currPlayer, "You have discarded a " + c + ".");
 	}
 	
-	private void clueColor(int player, int color) {
-		hands[player].clueColor(color);
-		
-		message("Player " + currPlayer + " has clued all of Player " + player + "'s " + getColorName(color) + "s.");
+	private void clue(int player, Color color) {
+		message("Player " + currPlayer + " has clued all of Player " + player + "'s " + color + "s.");
 	}
 	
-	private void clueNumber(int player, int number) {
-		hands[player].clueNumber(number);
-		
+	private void clue(int player, Number number) {
 		message("Player " + currPlayer + " has clued all of Player " + player + "'s " + number + "s.");
 	}
 	
@@ -209,19 +172,23 @@ public class HanabiGame {
 		}
 	}
 	
-	private String getColorName(int color) {
-		if (color == Card.RED) {
-			return "red";
-		} else if (color == Card.YELLOW) {
-			return "yellow";
-		} else if (color == Card.GREEN) {
-			return "green";
-		} else if (color == Card.BLUE) {
-			return "blue";
-		} else if (color == Card.WHITE) {
-			return "white";
-		} else {
-			return "rainbow";
+	static enum GameMode {
+		NORMAL(null, false),
+		RAINBOW(Color.RAINBOW, false),
+		RAINBOW_HARD(Color.RAINBOW, true),
+		MULTI(Color.MULTI, false),
+		MULTI_HARD(Color.MULTI, true);
+		
+		public final Color extraColor;
+		public final boolean hard;
+		
+		GameMode(Color extra, boolean hard) {
+			this.extraColor = extra;
+			this.hard = hard;
 		}
+	}
+	
+	static enum Action {
+		PLAY, DISCARD, CLUE;
 	}
 }
