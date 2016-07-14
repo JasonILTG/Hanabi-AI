@@ -1,7 +1,7 @@
 package main.enums;
 
 public enum Color {
-	NONE("None"), RED("Red"), YELLOW("Yellow"), GREEN("Green"),
+	NONE("None"), RED("Pink"), YELLOW("Yellow"), GREEN("Green"),
 	BLUE("Blue"), WHITE("White"), RAINBOW("Rainbow"), MULTI("Multi");
 	
 	public static final Color[] STANDARD = { RED, YELLOW, GREEN, BLUE, WHITE };
