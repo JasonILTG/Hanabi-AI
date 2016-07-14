@@ -1,5 +1,8 @@
 package main.enums;
 
+/**
+ * Enum for Hanabi colors.
+ */
 public enum Color {
 	NONE("None"), RED("Pink"), YELLOW("Yellow"), GREEN("Green"),
 	BLUE("Blue"), WHITE("White"), RAINBOW("Rainbow"), MULTI("Multi");
@@ -12,6 +15,11 @@ public enum Color {
 	
 	private final String name;
 	
+	/**
+	 * Constructor.
+	 * 
+	 * @param name The name of the color
+	 */
 	Color(String name) {
 		this.name = name;
 	}

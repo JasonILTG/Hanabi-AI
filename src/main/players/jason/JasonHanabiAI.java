@@ -1,22 +1,18 @@
-package main.players;
+package main.players.jason;
 import java.util.HashMap;
 
 import main.enums.Color;
 import main.enums.GameMode;
 import main.enums.Number;
 import main.moves.Move;
-import main.parts.CluedHand;
 import main.parts.Hand;
+import main.players.Player;
 
-public class HanabiAI extends Player {
+public class JasonHanabiAI extends Player {
 	private GameMode mode;
 	private CluedHand[] hands;
 	private HashMap<Color, Integer> stacks;
 	private HashMap<Color, int[]> discard;
-	
-	public HanabiAI(int playerNum) {
-		super(playerNum);
-	}
 	
 	@Override
 	public void init(Hand[] hands, GameMode mode) {
@@ -39,16 +35,14 @@ public class HanabiAI extends Player {
 	}
 	
 	private Move checkChop() {
-		for (int i = 1; i < hands.length; i++) {
-			int pos = (i + playerNum) % hands.length;
-			
-			int chopPos = getChop(hands[pos]);
-			Number chopNumber = hands[pos].getNumber(chopPos);
-			Color chopColor = hands[pos].getColor(chopPos);
+		for (int i = 0; i < hands.length; i++) {
+			int chopPos = getChop(hands[i]);
+			Number chopNumber = hands[i].getNumber(chopPos);
+			Color chopColor = hands[i].getColor(chopPos);
 			int stack = stacks.get(chopColor);
 			
 			if (chopNumber.ordinal() >= stack) {
-				int totalAmount = chopNumber.amount(mode.hard && (chopColor == Color.MULTI || chopColor == Color.RAINBOW));
+				int totalAmount = mode.hard && (chopColor == Color.MULTI || chopColor == Color.RAINBOW) ? 1 : chopNumber.amount;
 				if (discard.get(chopColor)[chopNumber.ordinal()] + 1 == totalAmount) {
 					
 				}
@@ -67,9 +61,6 @@ public class HanabiAI extends Player {
 		
 		return 0;
 	}
-
-	@Override
-	public void message(String message) {}
 
 	@Override
 	public void play(int player, int pos) {
