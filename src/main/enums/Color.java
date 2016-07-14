@@ -8,6 +8,8 @@ public enum Color {
 	public static final Color[] WITH_RAINBOW = { RED, YELLOW, GREEN, BLUE, WHITE, RAINBOW };
 	public static final Color[] WITH_MULTI = { RED, YELLOW, GREEN, BLUE, WHITE, MULTI };
 
+	public static final Color[] VALUES = { RED, YELLOW, GREEN, BLUE, WHITE, RAINBOW, MULTI };
+	
 	private final String name;
 	
 	Color(String name) {

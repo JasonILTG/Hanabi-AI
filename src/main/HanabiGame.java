@@ -4,7 +4,13 @@ import java.util.HashMap;
 import java.util.Random;
 
 import main.enums.Color;
+import main.enums.GameMode;
+import main.enums.MoveType;
 import main.enums.Number;
+import main.moves.ClueMove;
+import main.moves.DiscardMove;
+import main.moves.Move;
+import main.moves.PlayMove;
 import main.parts.Card;
 import main.parts.Deck;
 import main.parts.Hand;
@@ -23,17 +29,16 @@ public class HanabiGame {
 	public static final int COLOR = 0;
 	
 	public final GameMode mode;
-	int clues;
-	int lives;
-	HashMap<Color, PlayStack> stacks;
-	Player[] players;
-	Hand[] hands;
-	Deck deck;
-	ArrayList<Card> discard;
+	private int clues;
+	private int lives;
+	private HashMap<Color, PlayStack> stacks;
+	private Player[] players;
+	private Hand[] hands;
+	private Deck deck;
+	private ArrayList<Card> discard;
 	
-	int currPlayer;
-	boolean lastTurn;
-	int lastPlayer;
+	private int currPlayer;
+	private int lastPlayer;
 	
 	public HanabiGame(GameMode mode, Player[] players) {
 		this.mode = mode;
@@ -76,9 +81,10 @@ public class HanabiGame {
 		}
 		
 		currPlayer = rand.nextInt(numPlayers);
+		lastPlayer = -1;
 		
 		for (Player p : players) {
-			p.init(this);
+			p.init(hands, mode);
 		}
 	}
 
@@ -101,49 +107,123 @@ public class HanabiGame {
 	}
 	
 	private boolean turn() {
-		int[] move = players[currPlayer].move();
-		
-		boolean toReturn = interpretMove(move);
+		while (!interpretMove(players[currPlayer].move()));
 		
 		currPlayer = (currPlayer + 1) % players.length;
-		return toReturn;
+		return lives > 0 && currPlayer != lastPlayer;
 	}
 	
-	private boolean interpretMove(int[] move) {
-		return lives > 0 && (!lastTurn || currPlayer != lastPlayer);
+	private boolean interpretMove(Move move) {
+		if (move.type == MoveType.PLAY) {
+			return play(((PlayMove) move).pos);
+		} else if (move.type == MoveType.DISCARD) {
+			return discard(((DiscardMove) move).pos);
+		} else {
+			ClueMove cMove = (ClueMove) move;
+			
+			if (cMove.number == null) {
+				return clue(cMove.player, cMove.color);
+			} else {
+				return clue(cMove.player, cMove.number);
+			}
+		}
 	}
 	
-	private void play(int pos) {
-		Card c = hands[currPlayer].discard(pos);
-		Card d = deck.draw();
-		hands[currPlayer].draw(d);
+	private boolean play(int pos) {
+		if (pos >= hands[currPlayer].size()) {
+			message(currPlayer, "Invalid card.");
+			return false;
+		}
 		
+		String message, altMessage = "";
+		
+		Card c = hands[currPlayer].discard(pos);
 		if (!stacks.get(c.color).play(c)) {
 			lives--;
 			discard.add(c);
 		} else if (c.number == Number.FIVE) {
 			clues++;
 		}
+
+		if (deck.isEmpty()) {
+			if (lastPlayer == -1) {
+				lastPlayer = currPlayer;
+			}
+			
+			message = "Player " + currPlayer + " has played a " + c + ".";
+			message = "You have played a " + c + ".";
+		} else {
+			Card d = deck.draw();
+			hands[currPlayer].draw(d);
+			
+			message = "Player " + currPlayer + " has played a " + c + " and drawn a " + d + ".";
+			altMessage = "You have played a " + c + " and drawn a card.";
+		}
 		
-		message("Player " + currPlayer + " has played a " + c + " and drawn a " + d + ".", currPlayer, "You have played a " + c + ".");
+		for (Player p : players) {
+			p.play(currPlayer, pos);
+		}
+		
+		message(message, currPlayer, altMessage);
+		return true;
 	}
 	
-	private void discard(int pos) {
+	private boolean discard(int pos) {
+		if (pos >= hands[currPlayer].size()) return false;
+		
+		String message, altMessage = "";
+		
 		Card c = hands[currPlayer].discard(pos);
-		Card d = deck.draw();
-		hands[currPlayer].draw(d);
 		discard.add(c);
 		clues++;
 		
-		message("Player " + currPlayer + " has discarded a " + c + " and drawn a " + d + ".", currPlayer, "You have discarded a " + c + ".");
+		if (deck.isEmpty()) {
+			if (lastPlayer == -1) {
+				lastPlayer = currPlayer;
+			}
+			
+			message = "Player " + currPlayer + " has discarded a " + c + ".";
+			message = "You have discarded a " + c + ".";
+		} else {
+			Card d = deck.draw();
+			hands[currPlayer].draw(d);
+			
+			message = "Player " + currPlayer + " has discarded a " + c + " and drawn a " + d + ".";
+			altMessage = "You have discarded a " + c + " and drawn a card.";
+		}
+		
+		for (Player p : players) {
+			p.play(currPlayer, pos);
+		}
+		
+		message(message, currPlayer, altMessage);
+		return true;
 	}
 	
-	private void clue(int player, Color color) {
+	private boolean clue(int player, Color color) {
+		if (clues == 0 || !hands[player].clueValid(color)) return false;
+		
+		clues--;
+		
+		for (Player p : players) {
+			p.clue(currPlayer, player, color);
+		}
+		
 		message("Player " + currPlayer + " has clued all of Player " + player + "'s " + color + "s.");
+		return true;
 	}
 	
-	private void clue(int player, Number number) {
+	private boolean clue(int player, Number number) {
+		if (clues == 0 || !hands[player].clueValid(number)) return false;
+		
+		clues--;
+		
+		for (Player p : players) {
+			p.clue(currPlayer, player, number);
+		}
+		
 		message("Player " + currPlayer + " has clued all of Player " + player + "'s " + number + "s.");
+		return true;
 	}
 	
 	private int gameOver() {
@@ -166,29 +246,13 @@ public class HanabiGame {
 		}
 	}
 	
+	private void message(int to, String message) {
+		players[to].message(message);
+	}
+	
 	private void message(String message) {
 		for (Player p : players) {
 			p.message(message);
 		}
-	}
-	
-	static enum GameMode {
-		NORMAL(null, false),
-		RAINBOW(Color.RAINBOW, false),
-		RAINBOW_HARD(Color.RAINBOW, true),
-		MULTI(Color.MULTI, false),
-		MULTI_HARD(Color.MULTI, true);
-		
-		public final Color extraColor;
-		public final boolean hard;
-		
-		GameMode(Color extra, boolean hard) {
-			this.extraColor = extra;
-			this.hard = hard;
-		}
-	}
-	
-	static enum Action {
-		PLAY, DISCARD, CLUE;
 	}
 }

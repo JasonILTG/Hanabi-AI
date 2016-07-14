@@ -1,5 +1,5 @@
 package main.moves;
-import main.moves.Move.MoveType;
+import main.enums.MoveType;
 
 public class PlayMove extends Move {
 	public final int pos;
