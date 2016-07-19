@@ -5,27 +5,26 @@ import java.util.ArrayList;
 import main.enums.Color;
 import main.enums.GameMode;
 import main.enums.Number;
-import main.parts.Card;
 
 /**
  * Class for a hand of clued cards.
  */
-public class CluedHand {
-	private GameMode mode;
+public class HiddenHand {
+	private final GameMode mode;
+	
 	private ArrayList<CluedCard> cards;
 	
 	/**
-	 * Constructor.
+	 * Constructor for a hand of unknown cards.
 	 * 
-	 * @param cards The ArrayList of cards the hand starts with.
-	 * @param mode The game mode
+	 * @param size The number of cards
 	 */
-	public CluedHand(ArrayList<Card> cards, GameMode mode) {
+	public HiddenHand(int size, GameMode mode) {
 		this.mode = mode;
 		this.cards = new ArrayList<CluedCard>();
 		
-		for (Card card : cards) {
-			this.cards.add(new CluedCard(card, mode));
+		for (int i = 0; i < size; i++) {
+			cards.add(new CluedCard(mode));
 		}
 	}
 	
@@ -131,8 +130,8 @@ public class CluedHand {
 	 * 
 	 * @param card The card to add
 	 */
-	public void draw(Card card) {
-		cards.add(new CluedCard(card, mode));
+	public void draw() {
+		cards.add(new CluedCard(mode));
 	}
 	
 	/**
@@ -162,16 +161,17 @@ public class CluedHand {
 	}
 	
 	/**
-	 * Gives the specified color clue to all of the cards in the hand.
+	 * Gives the specified color clue to the specified cards in the hand.
 	 * 
 	 * @param color The color to clue
+	 * @param pos The positions of the cards to clue
 	 */
-	public void clue(Color color) {
-		for (CluedCard card : cards) {
-			if (card.color.same(color)) {
-				card.clue(color);
+	public void clue(Color color, ArrayList<Integer> pos) {
+		for (int i = 0; i < cards.size(); i++) {
+			if (pos.contains(i)) {
+				cards.get(i).clue(color);
 			} else {
-				card.antiClue(color);
+				cards.get(i).antiClue(color);
 			}
 		}
 	}
@@ -180,24 +180,21 @@ public class CluedHand {
 	 * Gives the specified number clue to all of the cards in the hand.
 	 * 
 	 * @param number The number to clue
+	 * @param pos The positions of the cards to clue
 	 */
-	public void clue(Number number) {
-		for (CluedCard card : cards) {
-			if (card.number == number) {
-				card.clue(number);
+	public void clue(Number number, ArrayList<Integer> pos) {
+		for (int i = 0; i < cards.size(); i++) {
+			if (pos.contains(i)) {
+				cards.get(i).clue(number);
 			} else {
-				card.antiClue(number);
+				cards.get(i).antiClue(number);
 			}
 		}
 	}
 	
+	
 	@Override
 	public String toString() {
-		String h = "";
-		for (CluedCard c : cards) {
-			h += c.color.ansi() + c.number;
-		}
-		
-		return h;
+		return "";
 	}
 }

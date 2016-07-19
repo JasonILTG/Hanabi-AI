@@ -68,6 +68,36 @@ public class Hand {
 	}
 	
 	/**
+	 * @param color The color clued
+	 * @return The positions of the colors clued
+	 */
+	public ArrayList<Integer> cluedCards(Color color) {
+		ArrayList<Integer> clued = new ArrayList<Integer>();
+		for (int i = 0; i < cards.size(); i++) {
+			if (cards.get(i).color == color) {
+				clued.add(i);
+			}
+		}
+		
+		return clued;
+	}
+	
+	/**
+	 * @param number The number clued
+	 * @return The positions of the numbers clued
+	 */
+	public ArrayList<Integer> cluedCards(Number number) {
+		ArrayList<Integer> clued = new ArrayList<Integer>();
+		for (int i = 0; i < cards.size(); i++) {
+			if (cards.get(i).number == number) {
+				clued.add(i);
+			}
+		}
+		
+		return clued;
+	}
+	
+	/**
 	 * Checks whether the given color clue is non-empty for this hand.
 	 * 
 	 * @param color The color of the clue
@@ -75,7 +105,7 @@ public class Hand {
 	 */
 	public boolean clueNonEmpty(Color color) {
 		for (Card c : cards) {
-			if (c.color == color || c.color == Color.MULTI) {
+			if (c.color.same(color)) {
 				return true;
 			}
 		}

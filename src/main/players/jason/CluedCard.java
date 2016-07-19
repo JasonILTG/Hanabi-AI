@@ -1,9 +1,11 @@
 package main.players.jason;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import main.enums.Color;
+import main.enums.GameMode;
 import main.enums.Number;
 import main.parts.Card;
 
@@ -19,17 +21,28 @@ public class CluedCard {
 	/** The ArrayList of possible numbers */
 	private ArrayList<Number> pNumbers;
 	
-	private boolean isClued;
+	private boolean isCClued;
+	private boolean isNClued;
+	
+	private Marker mark;
 	
 	/**
+	 * Constructor for an unknown card.
+	 * 
+	 * @param mode The game mode
+	 */
+	public CluedCard(GameMode mode) {
+		this(null, null, mode);
+	}
+	
+	/** 
 	 * Constructor.
 	 * 
 	 * @param card The non-clued card to copy data from
+	 * @param mode The game mode
 	 */
-	public CluedCard(Card card) {
-		color = card.color;
-		number = card.number;
-		isClued = false;
+	public CluedCard(Card card, GameMode mode) {
+		this(card.color, card.number, mode);
 	}
 	
 	/**
@@ -37,18 +50,70 @@ public class CluedCard {
 	 * 
 	 * @param c The color of the card
 	 * @param n The number of the card
+	 * @param mode The game mode
 	 */
-	public CluedCard(Color c, Number n) {
+	public CluedCard(Color c, Number n, GameMode mode) {
 		color = c;
 		number = n;
-		isClued = false;
+		isCClued = false;
+		isNClued = false;
+		mark = Marker.NONE;
+		
+		pNumbers = new ArrayList<Number>(Arrays.asList(Number.VALUES));
+		pColors = new ArrayList<Color>(Arrays.asList(mode.colors));
 	}
 	
 	/**
 	 * @return Whether the card has been directly clued
 	 */
 	public boolean isClued() {
-		return isClued;
+		return isCClued || isNClued;
+	}
+	
+	/**
+	 * @return Whether the card has been given a number clue
+	 */
+	public boolean isCClued() {
+		return isCClued;
+	}
+	
+	/**
+	 * @return Whether the card has been given a color clue
+	 */
+	public boolean isNClued() {
+		return isNClued;
+	}
+	
+	/**
+	 * Marks the card with the given marker.
+	 * 
+	 * @param m The marker
+	 */
+	public void mark(Marker m) {
+		mark = m;
+	}
+	
+	/**
+	 * @return The marker on the card
+	 */
+	public Marker getMark() {
+		return mark;
+	}
+	
+	/**
+	 * @param color The color
+	 * @return Whether the card can possibly be the given color
+	 */
+	public boolean possible(Color color) {
+		return pColors.contains(color);
+	}
+	
+	/**
+	 * @param number The number
+	 * @return Whether the card can possibly be the given number
+	 */
+	public boolean possible(Number number) {
+		return pNumbers.contains(number);
 	}
 	
 	/**
@@ -71,12 +136,12 @@ public class CluedCard {
 	 * @param color The color clued
 	 */
 	public void clue(Color color) {
-		isClued = true;
+		isCClued = true;
 		Iterator<Color> it = pColors.iterator();
 		
 		while (it.hasNext()) {
 			Color next = it.next();
-			if (next != color && next != Color.MULTI) {
+			if (!next.same(color)) {
 				it.remove();
 			}
 		}
@@ -88,7 +153,7 @@ public class CluedCard {
 	 * @param number The number clued
 	 */
 	public void clue(Number number) {
-		isClued = true;
+		isNClued = true;
 		Iterator<Number> it = pNumbers.iterator();
 		
 		while (it.hasNext()) {
@@ -116,5 +181,11 @@ public class CluedCard {
 	 */
 	public void antiClue(Number number) {
 		pNumbers.remove(number);
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		CluedCard c = (CluedCard) o;
+		return c.color == color && c.number == number;
 	}
 }

@@ -19,4 +19,9 @@ public class Card {
 		color = c;
 		number = n;
 	}
+	
+	@Override
+	public String toString() {
+		return color.ansi() + String.valueOf(number.ordinal() + 1) + Color.NONE.ansi();
+	}
 }

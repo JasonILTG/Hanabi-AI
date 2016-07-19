@@ -1,15 +1,29 @@
 package main.players;
 
+import java.util.ArrayList;
+
 import main.enums.Color;
-import main.enums.Number;
 import main.enums.GameMode;
+import main.enums.Number;
 import main.moves.Move;
+import main.parts.Card;
 import main.parts.Hand;
 
 /**
  * Abstract class for players (AIs or humans).
  */
 public abstract class Player {
+	private String name;
+	
+	/**
+	 * Constructor.
+	 * 
+	 * @param name The player's name
+	 */
+	public Player(String name) {
+		this.name = name;
+	}
+	
 	/**
 	 * Initializes the player with the hands of the other players and the game mode.
 	 * 
@@ -37,12 +51,26 @@ public abstract class Player {
 	public abstract void play(int player, int pos);
 	
 	/**
+	 * Informs this player of their own play.
+	 * 
+	 * @param pos The position of the card played
+	 */
+	public abstract void play(int pos, Card c);
+	
+	/**
 	 * Informs this player of a discard.
 	 * 
 	 * @param player The position of the player who discarded
 	 * @param pos The position of the card discarded in the player's hand
 	 */
 	public abstract void discard(int player, int pos);
+	
+	/**
+	 * Informs this player of their own discard.
+	 * 
+	 * @param pos The position of the card discarded
+	 */
+	public abstract void discard(int pos, Card c);
 	
 	/**
 	 * Informs this player of a color clue.
@@ -54,6 +82,15 @@ public abstract class Player {
 	public abstract void clue(int fromPlayer, int player, Color color);
 	
 	/**
+	 * Informs this player of a  color clue to this player.
+	 * 
+	 * @param fromPlayer The position of the player who gave the clue
+	 * @param color The color clued
+	 * @param pos The positions clued
+	 */
+	public abstract void clue(int fromPlayer, Color color, ArrayList<Integer> pos);
+	
+	/**
 	 * Informs this player of a number clue.
 	 * 
 	 * @param fromPlayer The position of the player who gave the clue
@@ -63,9 +100,36 @@ public abstract class Player {
 	public abstract void clue(int fromPlayer, int player, Number number);
 	
 	/**
+	 * Informs this player of a number clue to this player.
+	 * 
+	 * @param fromPlayer The position of the player who gave the clue
+	 * @param number The number clued
+	 * @param pos The positions clued
+	 */
+	public abstract void clue(int fromPlayer, Number number, ArrayList<Integer> pos);
+	
+	/**
+	 * Informs this player of another player's draw.
+	 * 
+	 * @param player The player
+	 * @param c The card
+	 */
+	public abstract void draw(int player, Card c);
+	
+	/**
+	 * Informs this player of their own draw.
+	 */
+	public abstract void draw();
+	
+	/**
 	 * Sends a message to this player.  This is mostly used for human players.
 	 * 
 	 * @param message The message sent
 	 */
 	public void message(String message) {}
+	
+	@Override
+	public String toString() {
+		return name;
+	}
 }

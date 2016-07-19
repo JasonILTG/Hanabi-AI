@@ -13,8 +13,9 @@ import main.moves.Move;
 import main.moves.PlayMove;
 import main.parts.Card;
 import main.parts.Deck;
-import main.parts.Hand;
 import main.parts.Firework;
+import main.parts.Hand;
+import main.players.Human;
 import main.players.Player;
 
 /**
@@ -89,6 +90,10 @@ public class HanabiGame {
 		// Initialize hands
 		int numPlayers = players.length;
 		hands = new Hand[numPlayers];
+		for (int i = 0; i < numPlayers; i++) {
+			hands[i] = new Hand();
+		}
+		
 		for (int i = 0; i < HAND_SIZES[numPlayers]; i++) {
 			for (int j = 0; j < numPlayers; j++) {
 				hands[j].draw(deck.draw());
@@ -169,10 +174,10 @@ public class HanabiGame {
 			
 			if (cMove.number == null) {
 				// Color clue
-				return clue(cMove.player, cMove.color);
+				return clue(unshift(cMove.player, currPlayer), cMove.color);
 			} else {
 				// Number clue
-				return clue(cMove.player, cMove.number);
+				return clue(unshift(cMove.player, currPlayer), cMove.number);
 			}
 		}
 	}
@@ -218,7 +223,13 @@ public class HanabiGame {
 		
 		// Update all players
 		for (int i = 0; i < players.length; i++) {
-			players[i].play(shift(currPlayer, i), pos);
+			if (i != currPlayer) {
+				players[i].play(shift(currPlayer, i), pos);
+				players[i].draw(shift(currPlayer, i), c);
+			} else {
+				players[i].play(pos, c);
+				players[i].draw();
+			}
 		}
 		
 		// Message all players
@@ -261,7 +272,13 @@ public class HanabiGame {
 		
 		// Update all players
 		for (int i = 0; i < players.length; i++) {
-			players[i].discard(shift(currPlayer, i), pos);
+			if (i != currPlayer) {
+				players[i].discard(shift(currPlayer, i), pos);
+				players[i].draw(shift(currPlayer, i), c);
+			} else {
+				players[i].discard(pos, c);
+				players[i].draw();
+			}
 		}
 		
 		// Message all players
@@ -289,7 +306,11 @@ public class HanabiGame {
 		
 		// Update all players
 		for (int i = 0; i < players.length; i++) {
-			players[i].clue(shift(currPlayer, i), shift(player, i), color);
+			if (i != player) {
+				players[i].clue(shift(currPlayer, i), shift(player, i), color);
+			} else {
+				players[i].clue(shift(player, i), color, hands[player].cluedCards(color));
+			}
 		}
 		
 		// Message all players
@@ -316,7 +337,11 @@ public class HanabiGame {
 		
 		// Update all players
 		for (int i = 0; i < players.length; i++) {
-			players[i].clue(shift(currPlayer, i), shift(player, i), number);
+			if (i != player) {
+				players[i].clue(shift(currPlayer, i), shift(player, i), number);
+			} else {
+				players[i].clue(shift(player, i), number, hands[player].cluedCards(number));
+			}
 		}
 		
 		// Message all players
@@ -388,5 +413,20 @@ public class HanabiGame {
 	 */
 	private int shift(int player, int pov) {
 		return ((player - pov + players.length) % players.length) - 1;
+	}
+	
+	private int unshift(int player, int pov) {
+		return (player + pov + 1) % players.length;
+	}
+	
+	public static void main(String[] args) {
+		Player[] players = new Player[4];
+		players[0] = new Human("Jackie");
+		players[1] = new Human("Jason");
+		players[2] = new Human("Milan");
+		players[3] = new Human("Maya");
+		
+		HanabiGame g = new HanabiGame(GameMode.MULTI, players);
+		System.out.println("Score: " + g.start());
 	}
 }
