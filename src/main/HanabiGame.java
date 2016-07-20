@@ -2,6 +2,7 @@ package main;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
+import java.util.Scanner;
 
 import main.enums.Color;
 import main.enums.GameMode;
@@ -22,10 +23,13 @@ import main.players.Player;
  * Class for all of the game logic.
  */
 public class HanabiGame {
+	public static final Scanner in = new Scanner(System.in);
+	
 	/** Hand sizes for different numbers of players */
 	public static final int[] HAND_SIZES = { 0, 0, 7, 5, 4, 4 };
 	
 	public final GameMode mode;
+	private final boolean logging;
 	
 	private int clues;
 	private int lives;
@@ -44,10 +48,12 @@ public class HanabiGame {
 	 * 
 	 * @param mode The game mode
 	 * @param players The array of players
+	 * @param logging Whether to log the game states and moves
 	 */
-	public HanabiGame(GameMode mode, Player[] players) {
+	public HanabiGame(GameMode mode, Player[] players, boolean logging) {
 		this.mode = mode;
 		this.players = players;
+		this.logging = logging;
 		
 		// Initialize fireworks
 		fireworks = new HashMap<Color, Firework>();
@@ -208,13 +214,14 @@ public class HanabiGame {
 			clues++;
 		}
 		
+		Card d = null;
 		if (deck.isEmpty()) {
 			// If the deck is empty, do not draw
 			message = players[currPlayer] + " has played a " + c + ".";
 			message = "You have played a " + c + ".";
 		} else {
 			// Otherwise, draw
-			Card d = deck.draw();
+			d = deck.draw();
 			hands[currPlayer].draw(d);
 			
 			message = players[currPlayer] + " has played a " + c + " and drawn a " + d + ".";
@@ -225,10 +232,10 @@ public class HanabiGame {
 		for (int i = 0; i < players.length; i++) {
 			if (i != currPlayer) {
 				players[i].play(shift(currPlayer, i), pos);
-				players[i].draw(shift(currPlayer, i), c);
+				if (d != null) players[i].draw(shift(currPlayer, i), d);
 			} else {
 				players[i].play(pos, c);
-				players[i].draw();
+				if (d != null) players[i].draw();
 			}
 		}
 		
@@ -257,13 +264,14 @@ public class HanabiGame {
 		discard.add(c);
 		clues++;
 		
+		Card d = null;
 		if (deck.isEmpty()) {
 			// If the deck is empty, do not draw
 			message = players[currPlayer] + " has discarded a " + c + ".";
 			message = "You have discarded a " + c + ".";
 		} else {
 			// Otherwise, draw
-			Card d = deck.draw();
+			d = deck.draw();
 			hands[currPlayer].draw(d);
 			
 			message = players[currPlayer] + " has discarded a " + c + " and drawn a " + d + ".";
@@ -274,10 +282,10 @@ public class HanabiGame {
 		for (int i = 0; i < players.length; i++) {
 			if (i != currPlayer) {
 				players[i].discard(shift(currPlayer, i), pos);
-				players[i].draw(shift(currPlayer, i), c);
+				if (d != null) players[i].draw(shift(currPlayer, i), c);
 			} else {
 				players[i].discard(pos, c);
-				players[i].draw();
+				if (d != null) players[i].draw();
 			}
 		}
 		
@@ -380,6 +388,10 @@ public class HanabiGame {
 				players[alt].message(altMessage);
 			}
 		}
+		
+		println(message);
+		println("Enter anything to continue.");
+		in.nextLine();
 	}
 	
 	/**
@@ -390,6 +402,10 @@ public class HanabiGame {
 	 */
 	private void message(int to, String message) {
 		players[to].message(message);
+		
+		println("[" + players[to] + "] " + message);
+		println("Enter anything to continue.");
+		in.nextLine();
 	}
 	
 	/**
@@ -401,6 +417,10 @@ public class HanabiGame {
 		for (Player p : players) {
 			p.message(message);
 		}
+		
+		println(message);
+		println("Enter anything to continue.");
+		in.nextLine();
 	}
 	
 	/**
@@ -418,7 +438,15 @@ public class HanabiGame {
 	private int unshift(int player, int pov) {
 		return (player + pov + 1) % players.length;
 	}
+
+	public void println() {
+		System.out.println();
+	}
 	
+	public void println(String s) {
+		System.out.println(Color.NONE + "[" + System.currentTimeMillis() + "] " + s + Color.NONE);
+	}
+
 	public static void main(String[] args) {
 		Player[] players = new Player[4];
 		players[0] = new Human("Jackie");
@@ -426,7 +454,7 @@ public class HanabiGame {
 		players[2] = new Human("Milan");
 		players[3] = new Human("Maya");
 		
-		HanabiGame g = new HanabiGame(GameMode.MULTI, players);
+		HanabiGame g = new HanabiGame(GameMode.MULTI, players, true);
 		System.out.println("Score: " + g.start());
 	}
 }

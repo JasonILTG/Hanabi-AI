@@ -226,6 +226,6 @@ public class Human extends Player {
 
 	@Override
 	public void message(String message) {
-		System.out.println("[" + System.currentTimeMillis() + "]" + message);
+		System.out.println("[" + System.currentTimeMillis() + "] " + message);
 	}
 }
