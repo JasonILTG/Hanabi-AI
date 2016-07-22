@@ -73,7 +73,7 @@ public class Hand {
 	 */
 	public ArrayList<Integer> cluedCards(Color color) {
 		ArrayList<Integer> clued = new ArrayList<Integer>();
-		for (int i = 0; i < cards.size(); i++) {
+		for (int i = cards.size() - 1; i >= 0; i--) {
 			if (cards.get(i).color == color) {
 				clued.add(i);
 			}
@@ -88,7 +88,7 @@ public class Hand {
 	 */
 	public ArrayList<Integer> cluedCards(Number number) {
 		ArrayList<Integer> clued = new ArrayList<Integer>();
-		for (int i = 0; i < cards.size(); i++) {
+		for (int i = cards.size() - 1; i >= 0; i--) {
 			if (cards.get(i).number == number) {
 				clued.add(i);
 			}
@@ -125,5 +125,14 @@ public class Hand {
 			}
 		}
 		return false;
+	}
+	
+	@Override
+	public String toString() {
+		StringBuilder h = new StringBuilder();
+		for (Card c : cards) {
+			h.append(c.toString());
+		}
+		return h.toString();
 	}
 }

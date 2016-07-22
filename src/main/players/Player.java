@@ -1,6 +1,7 @@
 package main.players;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import main.enums.Color;
 import main.enums.GameMode;
@@ -127,6 +128,8 @@ public abstract class Player {
 	 * @param message The message sent
 	 */
 	public void message(String message) {}
+	
+	public abstract boolean check(Hand[] h, int playerNum, HashMap<Color, Integer> fireworks);
 	
 	@Override
 	public String toString() {

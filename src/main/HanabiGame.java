@@ -1,6 +1,7 @@
 package main;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -14,10 +15,9 @@ import main.moves.Move;
 import main.moves.PlayMove;
 import main.parts.Card;
 import main.parts.Deck;
-import main.parts.Firework;
 import main.parts.Hand;
-import main.players.Human;
 import main.players.Player;
+import main.players.jason.JasonHanabiAI;
 
 /**
  * Class for all of the game logic.
@@ -35,7 +35,7 @@ public class HanabiGame {
 	private int lives;
 	
 	private Deck deck;
-	private HashMap<Color, Firework> fireworks;
+	private HashMap<Color, Integer> fireworks;
 	private ArrayList<Card> discard;
 
 	private Player[] players;
@@ -54,12 +54,6 @@ public class HanabiGame {
 		this.mode = mode;
 		this.players = players;
 		this.logging = logging;
-		
-		// Initialize fireworks
-		fireworks = new HashMap<Color, Firework>();
-		for (Color color : Color.STANDARD) {
-			fireworks.put(color, new Firework(color));
-		}
 		
 		// Initialize deck
 		if (mode == GameMode.NORMAL) {
@@ -89,6 +83,12 @@ public class HanabiGame {
 		// Set clues and lives
 		clues = 8;
 		lives = 3;
+		
+		// Initialize fireworks
+		fireworks = new HashMap<Color, Integer>();
+		for (Color color : mode.colors) {
+			fireworks.put(color, 0);
+		}
 		
 		// Initialize discard
 		discard = new ArrayList<Card>();
@@ -151,6 +151,8 @@ public class HanabiGame {
 	 * @return Whether the game is over
 	 */
 	private boolean turn() {
+		if (logging) stateLog();
+		
 		// Keep querying the player for a move as long as the player does not give a valid one
 		while (!interpretMove(players[currPlayer].move()));
 		
@@ -163,12 +165,42 @@ public class HanabiGame {
 	}
 	
 	/**
+	 * Logs the game state.
+	 */
+	private void stateLog() {
+		println("--------------------------------------------------------------");
+		println("Clues: " + clues + " | Lives: " + lives);
+		println();
+		
+		println("Fireworks: ");
+		StringBuilder f = new StringBuilder();
+		for (Entry<Color, Integer> e : fireworks.entrySet()) {
+			f.append(e.getKey().ansi() + e.getValue());
+		}
+		println(f.toString());
+		println();
+		
+		for (int i = 0; i < players.length; i++) {
+			println(players[i] + "'s hand: " + hands[i]);
+		}
+		println("--------------------------------------------------------------");
+		println();
+	}
+	
+	/**
 	 * Interprets and attempts to play out the given move.
 	 * 
 	 * @param move The move made by the current player
 	 * @return Whether the move was valid
 	 */
 	private boolean interpretMove(Move move) {
+		for (int i = 0; i < players.length; i++) {
+			if (!players[i].check(hands, i, fireworks)) {
+				int j = -1;
+				players[j] = null;
+			}
+		}
+		
 		if (move.type == MoveType.PLAY) {
 			// Play move
 			return play(((PlayMove) move).pos);
@@ -205,13 +237,16 @@ public class HanabiGame {
 		
 		Card c = hands[currPlayer].take(pos);
 		
-		// Check if the play is correct
-		if (!fireworks.get(c.color).play(c)) {
+		if (fireworks.get(c.color) != c.number.ordinal()) {
+			// If the play is incorrect, remove a life and discard the card
 			lives--;
 			discard.add(c);
-		} else if (c.number == Number.FIVE) {
+		} else {
+			// Otherwise, play the card
+			fireworks.put(c.color, c.number.ordinal() + 1);
+			
 			// Fives give back a clue
-			clues++;
+			if (c.number == Number.FIVE) clues++;
 		}
 		
 		Card d = null;
@@ -282,7 +317,7 @@ public class HanabiGame {
 		for (int i = 0; i < players.length; i++) {
 			if (i != currPlayer) {
 				players[i].discard(shift(currPlayer, i), pos);
-				if (d != null) players[i].draw(shift(currPlayer, i), c);
+				if (d != null) players[i].draw(shift(currPlayer, i), d);
 			} else {
 				players[i].discard(pos, c);
 				if (d != null) players[i].draw();
@@ -304,7 +339,7 @@ public class HanabiGame {
 	private boolean clue(int player, Color color) {
 		// Check if there are no clues left or if the clue is empty
 		if (clues == 0 || !hands[player].clueNonEmpty(color)) {
-			message(currPlayer, "Invalid clue.");
+			message(currPlayer, "Invalid clue (" + color + " to " + players[player] + ").");
 			return false;
 		}
 		
@@ -336,7 +371,7 @@ public class HanabiGame {
 	private boolean clue(int player, Number number) {
 		// Check if there are no clues left or if the clue is empty
 		if (clues == 0 || !hands[player].clueNonEmpty(number)) {
-			message(currPlayer, "Invalid clue.");
+			message(currPlayer, "Invalid clue (" + number + " to " + players[player] + ").");
 			return false;
 		}
 		
@@ -364,11 +399,14 @@ public class HanabiGame {
 	 */
 	private int gameOver() {
 		int score = 0;
-		for (Firework s : fireworks.values()) {
-			score += s.getScore();
+		for (int s : fireworks.values()) {
+			score += s;
 		}
 		
-		message("Game over!  Final score: " + score);
+		if (logging) {
+			stateLog();
+			message("Game over!  Final score: " + score);
+		}
 		return score;
 	}
 	
@@ -389,9 +427,11 @@ public class HanabiGame {
 			}
 		}
 		
-		println(message);
-		println("Enter anything to continue.");
-		in.nextLine();
+		if (logging) {
+			println(message);
+			println("Enter anything to continue.");
+			in.nextLine();
+		}
 	}
 	
 	/**
@@ -403,9 +443,11 @@ public class HanabiGame {
 	private void message(int to, String message) {
 		players[to].message(message);
 		
-		println("[" + players[to] + "] " + message);
-		println("Enter anything to continue.");
-		in.nextLine();
+		if (logging) {
+			println("[" + players[to] + "] " + message);
+			println("Enter anything to continue.");
+			in.nextLine();
+		}
 	}
 	
 	/**
@@ -418,9 +460,11 @@ public class HanabiGame {
 			p.message(message);
 		}
 		
-		println(message);
-		println("Enter anything to continue.");
-		in.nextLine();
+		if (logging) {
+			println(message);
+			println("Enter anything to continue.");
+			in.nextLine();
+		}
 	}
 	
 	/**
@@ -449,12 +493,36 @@ public class HanabiGame {
 
 	public static void main(String[] args) {
 		Player[] players = new Player[4];
-		players[0] = new Human("Jackie");
-		players[1] = new Human("Jason");
-		players[2] = new Human("Milan");
-		players[3] = new Human("Maya");
+		players[0] = new JasonHanabiAI("Jackie");
+		players[1] = new JasonHanabiAI("Jason");
+		players[2] = new JasonHanabiAI("Milan");
+		players[3] = new JasonHanabiAI("Maya");
 		
-		HanabiGame g = new HanabiGame(GameMode.MULTI, players, true);
-		System.out.println("Score: " + g.start());
+		HanabiGame g = new HanabiGame(GameMode.NORMAL, players, false);
+		
+		int num = 0;
+		int score = 0;
+		double total = 0;
+		int[] scores = new int[26];
+		while(score != 25) {
+			score = g.start();
+			scores[score]++;
+			total += score;
+			g.reset();
+			num++;
+			
+			if (num % 10000 == 0) {
+				System.out.println("Score distribution at " + num + ": ");
+				for (int i = 0; i < scores.length; i++) {
+					System.out.println(i + ": " + scores[i]);
+				}
+			}
+		}
+		
+		System.out.println("Final score distribution: ");
+		for (int i = 0; i < scores.length; i++) {
+			System.out.println(i + ": " + scores[i]);
+		}
+		System.out.println("Average over " + num + " games: " + total / num);
 	}
 }

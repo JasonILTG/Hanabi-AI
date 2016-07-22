@@ -13,7 +13,7 @@ public class DiscardMove extends Move {
 	 * @param pos The position to discard from
 	 */
 	public DiscardMove(int pos) {
-		super(MoveType.PLAY);
+		super(MoveType.DISCARD);
 		this.pos = pos;
 	}
 }

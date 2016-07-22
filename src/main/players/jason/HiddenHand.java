@@ -1,6 +1,7 @@
 package main.players.jason;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import main.enums.Color;
 import main.enums.GameMode;
@@ -191,7 +192,27 @@ public class HiddenHand {
 			}
 		}
 	}
-	
+
+	public void check(HashMap<Color, Integer> fireworks) {
+		for (CluedCard c : cards) {
+			boolean playable = true;
+			boolean discardable = true;
+			for (Color color : c.getPColors()) {
+				for (Number number : c.getPNumbers()) {
+					if (fireworks.get(color) != number.ordinal()) {
+						playable = false;
+					}
+					
+					if (fireworks.get(color) <= number.ordinal()) {
+						discardable = false;
+					}
+				}
+			}
+			
+			if (playable) c.mark(Marker.PLAY);
+			if (discardable) c.mark(Marker.DISCARD);
+		}
+	}
 	
 	@Override
 	public String toString() {

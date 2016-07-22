@@ -4,7 +4,7 @@ package main.enums;
  * Enum for game modes of Hanabi.  Each has different options.
  */
 public enum GameMode {
-	NORMAL(null, Color.VALUES, false),
+	NORMAL(null, Color.STANDARD, false),
 	RAINBOW(Color.RAINBOW, Color.WITH_RAINBOW, false),
 	RAINBOW_HARD(Color.RAINBOW, Color.WITH_RAINBOW, true),
 	MULTI(Color.MULTI, Color.WITH_MULTI, false),
