@@ -24,4 +24,10 @@ public class Card {
 	public String toString() {
 		return color.ansi() + String.valueOf(number.ordinal() + 1) + Color.NONE.ansi();
 	}
+	
+	@Override
+	public boolean equals(Object o) {
+		Card c = (Card) o;
+		return color == c.color && number == c.number;
+	}
 }

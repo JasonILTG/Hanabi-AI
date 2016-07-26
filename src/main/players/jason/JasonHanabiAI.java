@@ -22,6 +22,7 @@ public class JasonHanabiAI extends Player {
 	private HashMap<Color, boolean[]> willBePlayed;
 	private HashMap<Color, Integer> fireworks;
 	private HashMap<Color, int[]> discard;
+	private HashMap<Color, int[]> cardsSeen;
 	
 	public JasonHanabiAI(String name) {
 		super(name);
@@ -35,28 +36,34 @@ public class JasonHanabiAI extends Player {
 		
 		ownHand = new HiddenHand(hands[0].size(), mode);
 		
-		this.hands = new CluedHand[hands.length];
-		for (int i = 0; i < hands.length; i++) {
-			this.hands[i] = new CluedHand(hands[i].getCards(), mode);
-		}
-		
 		willBePlayed = new HashMap<Color, boolean[]>();
 		fireworks = new HashMap<Color, Integer>();
 		discard = new HashMap<Color, int[]>();
+		cardsSeen = new HashMap<Color, int[]>();
 		for (Color color : mode.colors) {
 			willBePlayed.put(color, new boolean[Number.VALUES.length]);
 			fireworks.put(color, 0);
 			discard.put(color, new int[Number.VALUES.length]);
+			cardsSeen.put(color, new int[Number.VALUES.length]);
+		}
+		
+		this.hands = new CluedHand[hands.length];
+		for (int i = 0; i < hands.length; i++) {
+			this.hands[i] = new CluedHand(hands[i].getCards(), mode);
+			for (Card c : hands[i].getCards()) {
+				cardsSeen.get(c.color)[c.number.ordinal()]++;
+			}
 		}
 	}
 
 	@Override
 	public Move move() {
+		// Check own hand for playable or discardable cards
 		ownHand.check(fireworks);
 		
 		// Then play cards
 		for (int i = ownHand.size() - 1; i >= 0; i--) {
-			if (ownHand.getMark(i) == Marker.PLAY) {
+			if (ownHand.getMark(i).play()) {
 				return new PlayMove(i);
 			}
 		}
@@ -74,7 +81,7 @@ public class JasonHanabiAI extends Player {
 				search:
 				for (int pos : playable) {
 					// If already marked to play, ignore
-					if (h.getMark(pos) == Marker.PLAY) continue;
+					if (h.getMark(pos) == Marker.CLUED_PLAY) continue;
 					
 					if (!h.isNClued(pos)) {
 						// If not already number clued, check if number clue will work
@@ -105,7 +112,14 @@ public class JasonHanabiAI extends Player {
 			}
 		}
 		
-		// Then discard
+		// Then discard any confirmed discardable cards
+		for (int i = 0; i < ownHand.size(); i++) {
+			if (ownHand.getMark(i) == Marker.DISCARD) {
+				return new DiscardMove(i);
+			}
+		}
+		
+		// If all else fails, discard chop
 		return new DiscardMove(getChop());
 	}
 	
@@ -147,7 +161,7 @@ public class JasonHanabiAI extends Player {
 		Color color = hands[player].getColor(pos);
 		Number number = hands[player].getNumber(pos);
 		
-		return number.ordinal() == fireworks.get(color);
+		return number.ordinal() == fireworks.get(color) && !willBePlayed.get(color)[number.ordinal()];
 	}
 	
 	private boolean possiblyPlayable(int player, int pos, Color color) {
@@ -230,9 +244,21 @@ public class JasonHanabiAI extends Player {
 	}
 	
 	private int getChop() {
-		for (int j = 0; j < ownHand.size(); j++) {
-			if (!ownHand.isClued(j)) {
-				return j;
+		for (int i = 0; i < ownHand.size(); i++) {
+			if (ownHand.getMark(i) == Marker.DISCARD) {
+				return i;
+			}
+		}
+		
+		for (int i = 0; i < ownHand.size(); i++) {
+			if (!ownHand.isClued(i)) {
+				return i;
+			}
+		}
+		
+		for (int i = 0; i < ownHand.size(); i++) {
+			if (ownHand.getMark(i) != Marker.CLUED_PLAY) {
+				return i;
 			}
 		}
 		
@@ -291,6 +317,8 @@ public class JasonHanabiAI extends Player {
 			discard.get(c.color)[c.number.ordinal()]++;
 			lives--;
 		}
+		
+		seeCard(c);
 	}
 	
 	@Override
@@ -307,6 +335,8 @@ public class JasonHanabiAI extends Player {
 
 		discard.get(c.color)[c.number.ordinal()]++;
 		clues++;
+		
+		seeCard(c);
 	}
 
 	@Override
@@ -319,9 +349,10 @@ public class JasonHanabiAI extends Player {
 		// Calculate which cards are clued
 		ArrayList<Integer> clued = getClued(player, color);
 		for (int p : clued) {
-			if (!hand.isCClued(p) && hand.getMark(p) != Marker.PLAY
+			if (!hand.isCClued(p) && hand.getMark(p) != Marker.CLUED_PLAY
 					&& possiblyPlayable(player, p, color)) {
-				hand.mark(Marker.PLAY, p);
+				hand.mark(Marker.CLUED_PLAY, p);
+				willBePlayed.get(hand.getColor(p))[hand.getNumber(p).ordinal()] = true;
 				break;
 			}
 			
@@ -336,9 +367,9 @@ public class JasonHanabiAI extends Player {
 		
 		// Clue to this player
 		for (int p : pos) {
-			if (!ownHand.isCClued(p) && ownHand.getMark(p) != Marker.PLAY
+			if (!ownHand.isCClued(p) && ownHand.getMark(p) != Marker.CLUED_PLAY
 					&& possiblyPlayable(p, color)) {
-				ownHand.mark(Marker.PLAY, p);
+				ownHand.mark(Marker.CLUED_PLAY, p);
 				break;
 			}
 			
@@ -357,9 +388,10 @@ public class JasonHanabiAI extends Player {
 		// Calculate which cards are clued
 		ArrayList<Integer> clued = getClued(player, number);
 		for (int p : clued) {
-			if (!hand.isNClued(p) && hand.getMark(p) != Marker.PLAY
+			if (!hand.isNClued(p) && hand.getMark(p) != Marker.CLUED_PLAY
 					&& possiblyPlayable(player, p, number)) {
-				hand.mark(Marker.PLAY, p);
+				hand.mark(Marker.CLUED_PLAY, p);
+				willBePlayed.get(hand.getColor(p))[hand.getNumber(p).ordinal()] = true;
 				break;
 			}
 			
@@ -374,9 +406,9 @@ public class JasonHanabiAI extends Player {
 		
 		// Clue to this player
 		for (int p : pos) {
-			if (!ownHand.isNClued(p) && ownHand.getMark(p) != Marker.PLAY
+			if (!ownHand.isNClued(p) && ownHand.getMark(p) != Marker.CLUED_PLAY
 					&& possiblyPlayable(p, number)) {
-				ownHand.mark(Marker.PLAY, p);
+				ownHand.mark(Marker.CLUED_PLAY, p);
 				break;
 			}
 			
@@ -388,6 +420,8 @@ public class JasonHanabiAI extends Player {
 	@Override
 	public void draw(int player, Card c) {
 		hands[player].draw(c);
+		
+		seeCard(c);
 	}
 	
 	@Override
@@ -395,6 +429,13 @@ public class JasonHanabiAI extends Player {
 		ownHand.draw();
 	}
 
+	private void seeCard(Card c) {
+		cardsSeen.get(c.color)[c.number.ordinal()]++;
+		if (cardsSeen.get(c.color)[c.number.ordinal()] == c.number.amount) {
+			ownHand.antiClueAll(c.color, c.number);
+		}
+	}
+	
 	public boolean check(Hand[] h, int playerNum, HashMap<Color, Integer> fireworks) {
 		for (int i = 0; i < hands.length; i++) {
 			int j = (i + playerNum + 1) % h.length;

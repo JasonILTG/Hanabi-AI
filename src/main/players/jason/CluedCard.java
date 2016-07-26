@@ -21,6 +21,8 @@ public class CluedCard {
 	/** The ArrayList of possible numbers */
 	private ArrayList<Number> pNumbers;
 	
+	private ArrayList<Card> notPossible;
+	
 	private boolean isCClued;
 	private boolean isNClued;
 	
@@ -33,6 +35,12 @@ public class CluedCard {
 	 */
 	public CluedCard(GameMode mode) {
 		this(null, null, mode);
+	}
+	
+	public CluedCard(GameMode mode, ArrayList<Card> notPossible) {
+		this(null, null, mode);
+		
+		this.notPossible.addAll(notPossible);
 	}
 	
 	/** 
@@ -61,6 +69,8 @@ public class CluedCard {
 		
 		pNumbers = new ArrayList<Number>(Arrays.asList(Number.VALUES));
 		pColors = new ArrayList<Color>(Arrays.asList(mode.colors));
+		
+		notPossible = new ArrayList<Card>();
 	}
 	
 	/**
@@ -114,6 +124,15 @@ public class CluedCard {
 	 */
 	public boolean possible(Number number) {
 		return pNumbers.contains(number);
+	}
+	
+	/**
+	 * @param color The color
+	 * @param number The number
+	 * @return Whether the card can possibly be the given color and number
+	 */
+	public boolean possible(Color color, Number number) {
+		return !notPossible.contains(new Card(color, number));
 	}
 	
 	/**
@@ -181,6 +200,15 @@ public class CluedCard {
 	 */
 	public void antiClue(Number number) {
 		pNumbers.remove(number);
+	}
+	
+	/**
+	 * Clues the card as NOT being the given card.
+	 * 
+	 * @param c The card
+	 */
+	public void antiClue(Card c) {
+		notPossible.add(c);
 	}
 	
 	@Override

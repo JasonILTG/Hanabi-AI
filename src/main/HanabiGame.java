@@ -1,5 +1,6 @@
 package main;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Random;
@@ -492,37 +493,47 @@ public class HanabiGame {
 	}
 
 	public static void main(String[] args) {
-		Player[] players = new Player[4];
+		Player[] players = new Player[5];
 		players[0] = new JasonHanabiAI("Jackie");
 		players[1] = new JasonHanabiAI("Jason");
 		players[2] = new JasonHanabiAI("Milan");
 		players[3] = new JasonHanabiAI("Maya");
+		players[4] = new JasonHanabiAI("Pesto");
 		
-		HanabiGame g = new HanabiGame(GameMode.NORMAL, players, false);
-		
-		int num = 0;
-		int score = 0;
-		double total = 0;
-		int[] scores = new int[26];
-		while(score != 25) {
-			score = g.start();
-			scores[score]++;
-			total += score;
-			g.reset();
-			num++;
+		for (int p = 4; p <= 4; p++) {
+			HanabiGame g = new HanabiGame(GameMode.NORMAL, Arrays.copyOfRange(players, 0, p), false);
 			
-			if (num % 10000 == 0) {
-				System.out.println("Score distribution at " + num + ": ");
-				for (int i = 0; i < scores.length; i++) {
-					System.out.println(i + ": " + scores[i]);
+			int MAX = 1000000;
+			
+			int num = 0;
+			int score = 0;
+			double total = 0;
+			int[] scores = new int[26];
+			while(num != MAX) {
+				score = g.start();
+				scores[score]++;
+				total += score;
+				g.reset();
+				num++;
+				
+				if (num % (MAX / 100) == 0) {
+					System.out.print(".");
 				}
+				/*if (num % 10000 == 0) {
+					System.out.println("Score distribution at " + num + ": ");
+					for (int i = 0; i < scores.length; i++) {
+						System.out.println(i + ": " + scores[i]);
+					}
+					System.out.println("Average over " + num + " games: " + (total / num));
+				}*/
 			}
+			
+			System.out.println();
+			System.out.println("Final score distribution (" + p + " players): ");
+			for (int i = 0; i < scores.length; i++) {
+				System.out.println(i + ": " + scores[i]);
+			}
+			System.out.println("Average over " + num + " games: " + total / num);
 		}
-		
-		System.out.println("Final score distribution: ");
-		for (int i = 0; i < scores.length; i++) {
-			System.out.println(i + ": " + scores[i]);
-		}
-		System.out.println("Average over " + num + " games: " + total / num);
 	}
 }

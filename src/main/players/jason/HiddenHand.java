@@ -6,6 +6,7 @@ import java.util.HashMap;
 import main.enums.Color;
 import main.enums.GameMode;
 import main.enums.Number;
+import main.parts.Card;
 
 /**
  * Class for a hand of clued cards.
@@ -14,6 +15,8 @@ public class HiddenHand {
 	private final GameMode mode;
 	
 	private ArrayList<CluedCard> cards;
+	
+	private ArrayList<Card> notPossible;
 	
 	/**
 	 * Constructor for a hand of unknown cards.
@@ -27,6 +30,8 @@ public class HiddenHand {
 		for (int i = 0; i < size; i++) {
 			cards.add(new CluedCard(mode));
 		}
+		
+		notPossible = new ArrayList<Card>();
 	}
 	
 	/**
@@ -132,7 +137,7 @@ public class HiddenHand {
 	 * @param card The card to add
 	 */
 	public void draw() {
-		cards.add(new CluedCard(mode));
+		cards.add(new CluedCard(mode, notPossible));
 	}
 	
 	/**
@@ -199,6 +204,8 @@ public class HiddenHand {
 			boolean discardable = true;
 			for (Color color : c.getPColors()) {
 				for (Number number : c.getPNumbers()) {
+					if (!c.possible(color, number)) continue;
+					
 					if (fireworks.get(color) != number.ordinal()) {
 						playable = false;
 					}
@@ -209,8 +216,17 @@ public class HiddenHand {
 				}
 			}
 			
-			if (playable) c.mark(Marker.PLAY);
+			if (playable) if (c.getMark() != Marker.CLUED_PLAY) c.mark(Marker.INFERRED_PLAY);
+			else if (c.getMark() == Marker.INFERRED_PLAY) c.mark(Marker.NONE);
 			if (discardable) c.mark(Marker.DISCARD);
+		}
+	}
+	
+	public void antiClueAll(Color color, Number number) {
+		notPossible.add(new Card(color, number));
+		
+		for (CluedCard c : cards) {
+			c.antiClue(new Card(color, number));
 		}
 	}
 	
