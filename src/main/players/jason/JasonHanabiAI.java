@@ -61,12 +61,27 @@ public class JasonHanabiAI extends Player {
 		// Check own hand for playable or discardable cards
 		ownHand.check(fireworks);
 		
+		// Prevent danger cards from being discarded
+		if (clues > 0 && clues < 1) {
+			for (int i = 0; i < hands.length; i++) {
+				CluedHand h = hands[i];
+				if(dangerous(i, 0) && !dangerous(i,1)){
+					if (h.getMark(0) == Marker.NOT_DISCARD) continue;
+					Color dNumber = h.getColor(0);
+					if(getClued(i, dNumber).size() <= 1){
+						return new ClueMove(i, dNumber);
+					}
+				}
+			}
+		}
+		
 		// Then play cards
 		for (int i = ownHand.size() - 1; i >= 0; i--) {
 			if (ownHand.getMark(i).play()) {
 				return new PlayMove(i);
 			}
 		}
+		
 		
 		if (clues > 0) {
 			// Then look for good clues
@@ -112,14 +127,7 @@ public class JasonHanabiAI extends Player {
 			}
 		}
 		
-		// Then discard any confirmed discardable cards
-		for (int i = 0; i < ownHand.size(); i++) {
-			if (ownHand.getMark(i) == Marker.DISCARD) {
-				return new DiscardMove(i);
-			}
-		}
-		
-		// If all else fails, discard chop
+		// If all else fails, discard
 		return new DiscardMove(getChop());
 	}
 	
@@ -257,7 +265,7 @@ public class JasonHanabiAI extends Player {
 		}
 		
 		for (int i = 0; i < ownHand.size(); i++) {
-			if (ownHand.getMark(i) != Marker.CLUED_PLAY) {
+			if (ownHand.getMark(i) != Marker.NOT_DISCARD) {
 				return i;
 			}
 		}
@@ -391,6 +399,11 @@ public class JasonHanabiAI extends Player {
 			if (!hand.isNClued(p) && hand.getMark(p) != Marker.CLUED_PLAY
 					&& possiblyPlayable(player, p, number)) {
 				hand.mark(Marker.CLUED_PLAY, p);
+				willBePlayed.get(hand.getColor(p))[hand.getNumber(p).ordinal()] = true;
+				break;
+			}
+			if (!hand.isNClued(p) && possiblyDangerous(p)) {
+				hand.mark(Marker.NOT_DISCARD, p);
 				willBePlayed.get(hand.getColor(p))[hand.getNumber(p).ordinal()] = true;
 				break;
 			}

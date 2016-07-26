@@ -503,7 +503,7 @@ public class HanabiGame {
 		for (int p = 4; p <= 4; p++) {
 			HanabiGame g = new HanabiGame(GameMode.NORMAL, Arrays.copyOfRange(players, 0, p), false);
 			
-			int MAX = 1000000;
+			int MAX = 100000;
 			
 			int num = 0;
 			int score = 0;
