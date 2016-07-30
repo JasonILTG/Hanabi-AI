@@ -1,15 +1,10 @@
-package main;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map.Entry;
-import java.util.Random;
-import java.util.Scanner;
+package main.game;
 
 import main.enums.Color;
 import main.enums.GameMode;
 import main.enums.MoveType;
 import main.enums.Number;
+import main.event.EventBus;
 import main.moves.ClueMove;
 import main.moves.DiscardMove;
 import main.moves.Move;
@@ -20,10 +15,18 @@ import main.parts.Hand;
 import main.players.Player;
 import main.players.jason.JasonHanabiAI;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map.Entry;
+import java.util.Random;
+import java.util.Scanner;
+
 /**
  * Class for all of the game logic.
  */
-public class HanabiGame {
+public class HanabiGame
+{
 	public static final Scanner in = new Scanner(System.in);
 	
 	/** Hand sizes for different numbers of players */
@@ -38,20 +41,22 @@ public class HanabiGame {
 	private Deck deck;
 	private HashMap<Color, Integer> fireworks;
 	private ArrayList<Card> discard;
-
+	
 	private Player[] players;
 	private Hand[] hands;
 	
-	private int currPlayer;
+	/** The index of the current player in the stored arrays */
+	private int currPlayerIndex;
 	
 	/**
 	 * Constructor.
-	 * 
-	 * @param mode The game mode
+	 *
+	 * @param mode    The game mode
 	 * @param players The array of players
 	 * @param logging Whether to log the game states and moves
 	 */
-	public HanabiGame(GameMode mode, Player[] players, boolean logging) {
+	public HanabiGame(GameMode mode, Player[] players, boolean logging)
+	{
 		this.mode = mode;
 		this.players = players;
 		this.logging = logging;
@@ -59,7 +64,8 @@ public class HanabiGame {
 		// Initialize deck
 		if (mode == GameMode.NORMAL) {
 			deck = new Deck();
-		} else {
+		}
+		else {
 			// Include extra color if appropriate
 			deck = new Deck(mode.extraColor, mode.hard);
 		}
@@ -71,7 +77,8 @@ public class HanabiGame {
 	/**
 	 * Resets the game.
 	 */
-	public void reset() {
+	public void reset()
+	{
 		deck.reset();
 		
 		setup();
@@ -80,7 +87,8 @@ public class HanabiGame {
 	/**
 	 * Sets up a new game.
 	 */
-	private void setup() {
+	private void setup()
+	{
 		// Set clues and lives
 		clues = 8;
 		lives = 3;
@@ -108,7 +116,7 @@ public class HanabiGame {
 		}
 		
 		// Randomize who gets to go first and reset the last player to -1
-		currPlayer = (new Random()).nextInt(numPlayers);
+		currPlayerIndex = (new Random()).nextInt(numPlayers);
 		
 		// Initialize players
 		for (int i = 0; i < players.length; i++) {
@@ -120,14 +128,15 @@ public class HanabiGame {
 			players[i].init(otherHands, mode);
 		}
 	}
-
+	
 	/**
 	 * Starts the game.
-	 * 
+	 *
 	 * @return The score at the end of the game
 	 */
-	public int start() {
-		message("GAME START: " + players[currPlayer] + " to move.");
+	public int start()
+	{
+		message("GAME START: " + players[currPlayerIndex] + " to move.");
 		
 		// Keep playing while the deck still has cards
 		while (!deck.isEmpty()) {
@@ -148,27 +157,29 @@ public class HanabiGame {
 	
 	/**
 	 * Plays out one turn.
-	 * 
+	 *
 	 * @return Whether the game is over
 	 */
-	private boolean turn() {
+	private boolean turn()
+	{
 		if (logging) stateLog();
 		
 		// Keep querying the player for a move as long as the player does not give a valid one
-		while (!interpretMove(players[currPlayer].move()));
+		while (!interpretMove(players[currPlayerIndex].move())) ;
 		
 		// The game is over if there are no lives left
 		if (lives == 0) return true;
 		
 		// Go to the next player
-		currPlayer = (currPlayer + 1) % players.length;
+		currPlayerIndex = (currPlayerIndex + 1) % players.length;
 		return false;
 	}
 	
 	/**
 	 * Logs the game state.
 	 */
-	private void stateLog() {
+	private void stateLog()
+	{
 		println("--------------------------------------------------------------");
 		println("Clues: " + clues + " | Lives: " + lives);
 		println();
@@ -190,11 +201,12 @@ public class HanabiGame {
 	
 	/**
 	 * Interprets and attempts to play out the given move.
-	 * 
+	 *
 	 * @param move The move made by the current player
 	 * @return Whether the move was valid
 	 */
-	private boolean interpretMove(Move move) {
+	private boolean interpretMove(Move move)
+	{
 		for (int i = 0; i < players.length; i++) {
 			if (!players[i].check(hands, i, fireworks)) {
 				int j = -1;
@@ -205,44 +217,51 @@ public class HanabiGame {
 		if (move.type == MoveType.PLAY) {
 			// Play move
 			return play(((PlayMove) move).pos);
-		} else if (move.type == MoveType.DISCARD) {
+		}
+		else if (move.type == MoveType.DISCARD) {
 			// Discard move
 			return discard(((DiscardMove) move).pos);
-		} else {
+		}
+		else {
 			ClueMove cMove = (ClueMove) move;
 			
 			if (cMove.number == null) {
 				// Color clue
-				return clue(unshift(cMove.player, currPlayer), cMove.color);
-			} else {
+				return clue(unshift(cMove.player, currPlayerIndex), cMove.color);
+			}
+			else {
 				// Number clue
-				return clue(unshift(cMove.player, currPlayer), cMove.number);
+				return clue(unshift(cMove.player, currPlayerIndex), cMove.number);
 			}
 		}
 	}
 	
 	/**
 	 * Attempts to play the current player's card in the given position.
-	 * 
+	 *
 	 * @param pos The position to play from
 	 * @return Whether the play is a valid move
 	 */
-	private boolean play(int pos) {
+	private boolean play(int pos)
+	{
 		// Check if the move is valid
-		if (pos >= hands[currPlayer].size()) {
-			message(currPlayer, "Invalid card.");
+		if (pos >= hands[currPlayerIndex].size()) {
+			message(currPlayerIndex, "Invalid card.");
 			return false;
 		}
 		
 		String message, altMessage = "";
 		
-		Card c = hands[currPlayer].take(pos);
+		Card c = hands[currPlayerIndex].take(pos);
+		boolean success = true;
 		
 		if (fireworks.get(c.color) != c.number.ordinal()) {
 			// If the play is incorrect, remove a life and discard the card
 			lives--;
 			discard.add(c);
-		} else {
+			success = false;
+		}
+		else {
 			// Otherwise, play the card
 			fireworks.put(c.color, c.number.ordinal() + 1);
 			
@@ -253,97 +272,106 @@ public class HanabiGame {
 		Card d = null;
 		if (deck.isEmpty()) {
 			// If the deck is empty, do not draw
-			message = players[currPlayer] + " has played a " + c + ".";
+			message = players[currPlayerIndex] + " has played a " + c + ".";
 			message = "You have played a " + c + ".";
-		} else {
+		}
+		else {
 			// Otherwise, draw
 			d = deck.draw();
-			hands[currPlayer].draw(d);
+			hands[currPlayerIndex].draw(d);
 			
-			message = players[currPlayer] + " has played a " + c + " and drawn a " + d + ".";
+			message = players[currPlayerIndex] + " has played a " + c + " and drawn a " + d + ".";
 			altMessage = "You have played a " + c + " and drawn a card.";
 		}
 		
 		// Update all players
 		for (int i = 0; i < players.length; i++) {
-			if (i != currPlayer) {
-				players[i].play(shift(currPlayer, i), pos);
-				if (d != null) players[i].draw(shift(currPlayer, i), d);
-			} else {
+			if (i != currPlayerIndex) {
+				players[i].play(shift(currPlayerIndex, i), pos);
+				if (d != null) players[i].draw(shift(currPlayerIndex, i), d);
+			}
+			else {
 				players[i].play(pos, c);
 				if (d != null) players[i].draw();
 			}
 		}
 		
 		// Message all players
-		message(message, currPlayer, altMessage);
+		message(message, currPlayerIndex, altMessage);
+		// Fire the play event
+		EventBus.fireEvent(new PlayEvent(players[currPlayerIndex], c, d, success));
 		return true;
 	}
 	
 	/**
 	 * Attempts to discard the current player's card in the given position.
-	 * 
+	 *
 	 * @param pos The position to discard from
 	 * @return Whether the discard is a valid move
 	 */
-	private boolean discard(int pos) {
+	private boolean discard(int pos)
+	{
 		// Check whether the move is valid
-		if (pos >= hands[currPlayer].size()) {
-			message(currPlayer, "Invalid card.");
+		if (pos >= hands[currPlayerIndex].size()) {
+			message(currPlayerIndex, "Invalid card.");
 			return false;
 		}
 		
 		String message, altMessage = "";
 		
 		// Discard the card and give back a clue
-		Card c = hands[currPlayer].take(pos);
+		Card c = hands[currPlayerIndex].take(pos);
 		discard.add(c);
 		clues++;
 		
 		Card d = null;
 		if (deck.isEmpty()) {
 			// If the deck is empty, do not draw
-			message = players[currPlayer] + " has discarded a " + c + ".";
+			message = players[currPlayerIndex] + " has discarded a " + c + ".";
 			message = "You have discarded a " + c + ".";
-		} else {
+		}
+		else {
 			// Otherwise, draw
 			d = deck.draw();
-			hands[currPlayer].draw(d);
+			hands[currPlayerIndex].draw(d);
 			
-			message = players[currPlayer] + " has discarded a " + c + " and drawn a " + d + ".";
+			message = players[currPlayerIndex] + " has discarded a " + c + " and drawn a " + d + ".";
 			altMessage = "You have discarded a " + c + " and drawn a card.";
 		}
 		
 		// Update all players
 		for (int i = 0; i < players.length; i++) {
-			if (i != currPlayer) {
-				players[i].discard(shift(currPlayer, i), pos);
-				if (d != null) players[i].draw(shift(currPlayer, i), d);
-			} else {
+			if (i != currPlayerIndex) {
+				players[i].discard(shift(currPlayerIndex, i), pos);
+				if (d != null) players[i].draw(shift(currPlayerIndex, i), d);
+			}
+			else {
 				players[i].discard(pos, c);
 				if (d != null) players[i].draw();
 			}
 		}
 		
 		// Message all players
-		message(message, currPlayer, altMessage);
+		message(message, currPlayerIndex, altMessage);
+		// Fire the DiscardEvent
+		EventBus.fireEvent(new DiscardEvent(players[currPlayerIndex], c, d));
 		return true;
 	}
 	
 	/**
 	 * Gives a clue of the given color to the given player from the current player.
-	 * 
+	 *
 	 * @param player The player to clue
-	 * @param color The color to clue
+	 * @param color  The color to clue
 	 * @return Whether the clue is a valid move
 	 */
-	private boolean clue(int player, Color color) {
+	private boolean clue(int player, Color color)
+	{
 		// Check if there are no clues left or if the clue is empty
 		if (clues == 0 || !hands[player].clueNonEmpty(color)) {
-			message(currPlayer, "Invalid clue (" + color + " to " + players[player] + ").");
+			message(currPlayerIndex, "Invalid clue (" + color + " to " + players[player] + ").");
 			return false;
 		}
-		
 		
 		// Use up a clue
 		clues--;
@@ -351,28 +379,32 @@ public class HanabiGame {
 		// Update all players
 		for (int i = 0; i < players.length; i++) {
 			if (i != player) {
-				players[i].clue(shift(currPlayer, i), shift(player, i), color);
-			} else {
+				players[i].clue(shift(currPlayerIndex, i), shift(player, i), color);
+			}
+			else {
 				players[i].clue(shift(player, i), color, hands[player].cluedCards(color));
 			}
 		}
 		
 		// Message all players
-		message(players[currPlayer] + " has clued all of " + players[player] + "'s " + color + "s.");
+		message(players[currPlayerIndex] + " has clued all of " + players[player] + "'s " + color + "s.");
+		// Fire the clue event
+		EventBus.fireEvent(new ClueEvent.Color(players[currPlayerIndex], color));
 		return true;
 	}
 	
 	/**
 	 * Gives a clue of the given number to the given player from the current player.
-	 * 
+	 *
 	 * @param player The player to clue
 	 * @param number The number to clue
 	 * @return Whether the clue is a valid move
 	 */
-	private boolean clue(int player, Number number) {
+	private boolean clue(int player, Number number)
+	{
 		// Check if there are no clues left or if the clue is empty
 		if (clues == 0 || !hands[player].clueNonEmpty(number)) {
-			message(currPlayer, "Invalid clue (" + number + " to " + players[player] + ").");
+			message(currPlayerIndex, "Invalid clue (" + number + " to " + players[player] + ").");
 			return false;
 		}
 		
@@ -382,23 +414,27 @@ public class HanabiGame {
 		// Update all players
 		for (int i = 0; i < players.length; i++) {
 			if (i != player) {
-				players[i].clue(shift(currPlayer, i), shift(player, i), number);
-			} else {
+				players[i].clue(shift(currPlayerIndex, i), shift(player, i), number);
+			}
+			else {
 				players[i].clue(shift(player, i), number, hands[player].cluedCards(number));
 			}
 		}
 		
 		// Message all players
-		message(players[currPlayer] + " has clued all of " + players[player] + "'s " + number + "s.");
+		message(players[currPlayerIndex] + " has clued all of " + players[player] + "'s " + number + "s.");
+		// Fire the ClueEvent
+		EventBus.fireEvent(new ClueEvent.Number(players[currPlayerIndex], number));
 		return true;
 	}
 	
 	/**
 	 * Calculates the score once the game is over.
-	 * 
+	 *
 	 * @return The score
 	 */
-	private int gameOver() {
+	private int gameOver()
+	{
 		int score = 0;
 		for (int s : fireworks.values()) {
 			score += s;
@@ -414,16 +450,18 @@ public class HanabiGame {
 	/**
 	 * Messages all but one player one message, and the excluded player a different message.
 	 * This is mainly used to not reveal information about card draws.
-	 * 
-	 * @param message The main message
-	 * @param alt The player who receives an alternate message
+	 *
+	 * @param message    The main message
+	 * @param alt        The player who receives an alternate message
 	 * @param altMessage The alternate message
 	 */
-	private void message(String message, int alt, String altMessage) {
+	private void message(String message, int alt, String altMessage)
+	{
 		for (int i = 0; i < players.length; i++) {
 			if (i != alt) {
 				players[i].message(message);
-			} else {
+			}
+			else {
 				players[alt].message(altMessage);
 			}
 		}
@@ -437,11 +475,12 @@ public class HanabiGame {
 	
 	/**
 	 * Messages the given player.
-	 * 
-	 * @param to The player to message
+	 *
+	 * @param to      The player to message
 	 * @param message The message
 	 */
-	private void message(int to, String message) {
+	private void message(int to, String message)
+	{
 		players[to].message(message);
 		
 		if (logging) {
@@ -453,10 +492,11 @@ public class HanabiGame {
 	
 	/**
 	 * Messages all players.
-	 * 
+	 *
 	 * @param message The message
 	 */
-	private void message(String message) {
+	private void message(String message)
+	{
 		for (Player p : players) {
 			p.message(message);
 		}
@@ -469,30 +509,40 @@ public class HanabiGame {
 	}
 	
 	/**
-	 * Shifts the given player index to the given POV. 
+	 * Shifts the given player index to the given POV.
 	 * If player == POV, this will return -1.
-	 * 
+	 *
 	 * @param player The player index to shift
-	 * @param pov The POV to shift to
+	 * @param pov    The POV to shift to
 	 * @return The shifted player index
 	 */
-	private int shift(int player, int pov) {
+	private int shift(int player, int pov)
+	{
 		return ((player - pov + players.length) % players.length) - 1;
 	}
 	
-	private int unshift(int player, int pov) {
+	private int unshift(int player, int pov)
+	{
 		return (player + pov + 1) % players.length;
 	}
-
-	public void println() {
+	
+	public int getClueCount()
+	{
+		return clues;
+	}
+	
+	public void println()
+	{
 		System.out.println();
 	}
 	
-	public void println(String s) {
+	public void println(String s)
+	{
 		System.out.println(Color.NONE + "[" + System.currentTimeMillis() + "] " + s + Color.NONE);
 	}
-
-	public static void main(String[] args) {
+	
+	public static void main(String[] args)
+	{
 		Player[] players = new Player[5];
 		players[0] = new JasonHanabiAI("Jackie");
 		players[1] = new JasonHanabiAI("Jason");
@@ -509,7 +559,7 @@ public class HanabiGame {
 			int score = 0;
 			double total = 0;
 			int[] scores = new int[26];
-			while(num != MAX) {
+			while (num != MAX) {
 				score = g.start();
 				scores[score]++;
 				total += score;
