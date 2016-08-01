@@ -5,6 +5,7 @@ import main.enums.MoveType;
  * Move class for plays.
  */
 public class PlayMove extends Move {
+	/** The position of the move; this corresponds to the index of the card in player's hand */
 	public final int pos;
 	
 	/**

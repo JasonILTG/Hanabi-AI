@@ -1,4 +1,4 @@
-package main.game;
+package main.game.events;
 
 import main.players.Player;
 

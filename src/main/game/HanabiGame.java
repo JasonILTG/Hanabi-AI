@@ -2,23 +2,31 @@ package main.game;
 
 import main.enums.Color;
 import main.enums.GameMode;
-import main.enums.MoveType;
 import main.enums.Number;
+import main.event.Event;
 import main.event.EventBus;
-import main.moves.ClueMove;
+import main.event.EventListener;
+import main.game.breakpoint.DeathFail;
+import main.game.breakpoint.DeckEmpty;
+import main.game.breakpoint.FullScore;
+import main.game.events.DiscardEvent;
+import main.game.events.DrawEvent;
+import main.game.events.PlayEvent;
+import main.game.utils.CyclicIterator;
 import main.moves.DiscardMove;
 import main.moves.Move;
 import main.moves.PlayMove;
 import main.parts.Card;
 import main.parts.Deck;
 import main.parts.Hand;
+import main.players.Human;
 import main.players.Player;
 import main.players.jason.JasonHanabiAI;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map.Entry;
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -26,7 +34,17 @@ import java.util.Scanner;
  * Class for all of the game logic.
  */
 public class HanabiGame
+		implements EventListener
 {
+	/** A way for the game to provide authentication to read a player's hand */
+	public class Authenticator
+	{
+		private Authenticator()
+		{
+		}
+	}
+	
+	private Authenticator auth;
 	public static final Scanner in = new Scanner(System.in);
 	
 	/** Hand sizes for different numbers of players */
@@ -39,27 +57,97 @@ public class HanabiGame
 	private int lives;
 	
 	private Deck deck;
+	/** A map from the colors to the number of cards played for that color */
 	private HashMap<Color, Integer> fireworks;
 	private ArrayList<Card> discard;
 	
-	private Player[] players;
-	private Hand[] hands;
+	private LinkedList<Player> players;
+	private CyclicIterator<Player> playerItr;
+	private Player currentPlayer;
 	
-	/** The index of the current player in the stored arrays */
-	private int currPlayerIndex;
+	Map<Color, Map<Number, Integer>> discardCountMap;
 	
 	/**
 	 * Constructor.
 	 *
 	 * @param mode    The game mode
-	 * @param players The array of players
 	 * @param logging Whether to log the game states and moves
 	 */
-	public HanabiGame(GameMode mode, Player[] players, boolean logging)
+	public HanabiGame(GameMode mode, boolean logging)
 	{
 		this.mode = mode;
-		this.players = players;
 		this.logging = logging;
+		players = new LinkedList<>();
+		auth = new Authenticator();
+		setup();
+		setupListener();
+	}
+	
+	/**
+	 * Registers the relevant event association for this game.
+	 */
+	private void setupListener()
+	{
+		// Listen to discard events
+		EventBus.addListener(DiscardEvent.class, this);
+	}
+	
+	@Override
+	public void onEvent(Event event)
+	{
+		if (event instanceof DiscardEvent) {
+			Card card = ((DiscardEvent) event).discard;
+			
+			// Add the discarded card to the mapping
+			Map<Number, Integer> coloredDiscardMap = discardCountMap.get(card.color);
+			// If the mapping does not exist yet, create one.
+			if (coloredDiscardMap == null) {
+				coloredDiscardMap = new HashMap<>();
+				discardCountMap.put(card.color, coloredDiscardMap);
+			}
+			
+			Integer currentDiscardCount = coloredDiscardMap.get(card.number);
+			// If the mapping does not exist yet, set to 0.
+			if (currentDiscardCount == null) {
+				currentDiscardCount = 0;
+			}
+			// Add one to the discard count and save
+			coloredDiscardMap.put(card.number, currentDiscardCount + 1);
+		}
+	}
+	
+	/**
+	 * @return The number of clues left to use
+	 */
+	public int getClueCount()
+	{
+		return clues;
+	}
+	
+	/**
+	 * @return The number of cards remaining in the deck
+	 */
+	public int getDeckSize()
+	{
+		return deck.size();
+	}
+	
+	/**
+	 * Adds a player to this game
+	 */
+	public void addPlayer(Player player)
+	{
+		players.add(player);
+	}
+	
+	/**
+	 * Prepares the game to be ready to play.
+	 */
+	private void setup()
+	{
+		// Set up clues and lives
+		clues = 8;
+		lives = 3;
 		
 		// Initialize deck
 		if (mode == GameMode.NORMAL) {
@@ -71,108 +159,295 @@ public class HanabiGame
 		}
 		deck.shuffle();
 		
-		setup();
-	}
-	
-	/**
-	 * Resets the game.
-	 */
-	public void reset()
-	{
-		deck.reset();
-		
-		setup();
-	}
-	
-	/**
-	 * Sets up a new game.
-	 */
-	private void setup()
-	{
-		// Set clues and lives
-		clues = 8;
-		lives = 3;
+		// Initialize discard
+		discard = new ArrayList<>();
+		discardCountMap = new HashMap<>();
 		
 		// Initialize fireworks
-		fireworks = new HashMap<Color, Integer>();
+		fireworks = new HashMap<>();
 		for (Color color : mode.colors) {
 			fireworks.put(color, 0);
 		}
+	}
+	
+	/**
+	 * Executes the actions to do just before the start of a game.
+	 * <br>
+	 * The actions include dealing cards and randomizing the first player.
+	 */
+	private void preStart()
+	{
+		// Create and build hands
+		Hand[] hands = new Hand[players.size()];
+		int handSize = HAND_SIZES[players.size()];
 		
-		// Initialize discard
-		discard = new ArrayList<Card>();
-		
-		// Initialize hands
-		int numPlayers = players.length;
-		hands = new Hand[numPlayers];
-		for (int i = 0; i < numPlayers; i++) {
-			hands[i] = new Hand();
-		}
-		
-		for (int i = 0; i < HAND_SIZES[numPlayers]; i++) {
-			for (int j = 0; j < numPlayers; j++) {
-				hands[j].draw(deck.draw());
+		for (int index = 0; index < hands.length; index++) {
+			hands[index] = new Hand(players.get(index));
+			// Draw cards
+			for (int i = 0; i < handSize; i++) {
+				hands[index].draw(deck.draw());
 			}
+			// Give hand to player
+			players.get(index).setHand(hands[index]);
 		}
 		
-		// Randomize who gets to go first and reset the last player to -1
-		currPlayerIndex = (new Random()).nextInt(numPlayers);
+		// Create player iterator
+		playerItr = new CyclicIterator<>(players);
+		// Go to a random position in the list
+		int startPos = new Random().nextInt(players.size());
+		for (int i = 0; i < startPos; i++) {
+			playerItr.next();
+		}
+	}
+	
+	/**
+	 * Checks if there should be a significant turn of events in the game.
+	 *
+	 * @throws DeathFail The players failed the game by losing all their lives
+	 * @throws DeckEmpty The last card in the deck was drawn
+	 * @throws FullScore The players achieved the highest score possible under their present conditions
+	 */
+	private void checkGameOver()
+			throws DeathFail, DeckEmpty, FullScore
+	{
+		// If there are no more lives, game ends.
+		if (lives == 0) throw new DeathFail();
 		
-		// Initialize players
-		for (int i = 0; i < players.length; i++) {
-			Hand[] otherHands = new Hand[players.length - 1];
-			for (int j = 1; j < players.length; j++) {
-				otherHands[j - 1] = hands[(i + j) % players.length];
+		// If the deck is empty, everyone will take their last turn.
+		if (deck.isEmpty()) throw new DeckEmpty();
+		
+		// Check that max score is reached
+		boolean fullScore = true;
+		Map<Color, Integer> maxScoreMap = buildMaxScoreMap();
+		for (Map.Entry<Color, Integer> maxScoreEntry : maxScoreMap.entrySet())
+		{
+			if ()
+		}
+	}
+	
+	/**
+	 * @return A map from each color to the maximum core attainable on that color
+	 */
+	private Map<Color, Integer> buildMaxScoreMap()
+	{
+		// Build a map of the number of discards made on each.
+		// Variable names are confusing in this section; just trust me that this will work. Probably.
+		Map<Color, Integer> maxScoreMap = new HashMap<>();
+		
+		for (Map.Entry<Color, Map<Number, Integer>> coloredDiscardEntry : discardCountMap.entrySet()) {
+			// Initialize to 5
+			int maxScore = 5;
+			
+			// For each Number, check if all the cards were discarded.
+			for (Number n : Number.VALUES) {
+				Integer colorNumberDiscardCount = coloredDiscardEntry.getValue().get(n);
+				if (colorNumberDiscardCount != null && colorNumberDiscardCount.intValue() == n.amount) {
+					// All cards of this color and this number has been discarded, set the max score and break.
+					maxScore = n.getValue();
+					break;
+				}
 			}
 			
-			players[i].init(otherHands, mode);
+			// Record the result
+			maxScoreMap.put(coloredDiscardEntry.getKey(), maxScore);
+		}
+		return maxScoreMap;
+	}
+	
+	/**
+	 * Rebuilds the discard count using the discard pile to verify that the information is correct.
+	 */
+	private void rebuildDiscardCountMap()
+	{
+		// TODO
+	}
+	
+	/**
+	 * Execute a play move the player requested.
+	 *
+	 * @return Whether the execution was successful
+	 */
+	private boolean play(PlayMove move)
+	{
+		// Check play index
+		if (move.pos < 0 || move.pos >= currentPlayer.getHand().size()) {
+			// Message the player if it is a human
+			if (currentPlayer instanceof Human) {
+				Human player = (Human) currentPlayer;
+				player.message("Invalid card index.");
+			}
+			return false;
+		}
+		
+		// Remove the card from player's hand and let the player draw a new card
+		Card play = currentPlayer.getHand().take(move.pos);
+		Card draw = null;
+		try {
+			draw = deck.draw();
+		}
+		catch (IndexOutOfBoundsException ex) {} // Happens when there are no cards left.
+		
+		// Evaluate if the play is successful or not.
+		int expectedNumber = fireworks.get(play.color).intValue() + 1;
+		PlayEvent playEvent;
+		if (play.number.getValue() == expectedNumber) {
+			// Play successful.
+			fireworks.put(play.color, play.number.getValue());
+			// If the players played a 5, increase number of clues by 1.
+			if (play.number == Number.FIVE) {
+				clues++;
+			}
+			playEvent = new PlayEvent(currentPlayer, play, true);
+		}
+		else {
+			// Play unsuccessful, the card goes to the discard pile, and players lose one life.
+			discard.add(play);
+			lives--;
+			playEvent = new PlayEvent(currentPlayer, play, false);
+		}
+		
+		// Fire the events
+		EventBus.fireEvent(playEvent);
+		EventBus.fireEvent(new DrawEvent(currentPlayer, draw));
+		
+		// Execution successful.
+		return true;
+	}
+	
+	/**
+	 * Execute a discard move the player requested.
+	 *
+	 * @return Whether the execution was successful
+	 */
+	private boolean discard(DiscardMove move)
+	{
+		// Check play index
+		if (move.pos < 0 || move.pos >= currentPlayer.getHand().size()) {
+			// Message the player if it is a human
+			if (currentPlayer instanceof Human) {
+				Human player = (Human) currentPlayer;
+				player.message("Invalid card index.");
+			}
+			return false;
+		}
+		
+		// Remove the card from player's hand and let the player draw a new card
+		Card discard = currentPlayer.getHand().take(move.pos);
+		Card draw = null;
+		try {
+			draw = deck.draw();
+		}
+		catch (IndexOutOfBoundsException ex) {} // Happens when there are no cards left.
+		
+		// Add to the discard pile
+		this.discard.add(discard);
+		
+		// Fire the events
+		EventBus.fireEvent(new DiscardEvent(currentPlayer, discard));
+		EventBus.fireEvent(new DrawEvent(currentPlayer, draw));
+		
+		// Execution successful.
+		return true;
+	}
+	
+	/**
+	 * Executes a move given by the player.
+	 *
+	 * @param m The move to execute
+	 * @return Whether the execution was successful
+	 */
+	private boolean executeMove(Move m)
+	{
+		switch (m.type) {
+			case PLAY:
+				return play((PlayMove) m);
+			case DISCARD:
+				break; // TODO execute the discard move
+			case CLUE:
+				break;// TODO execute the clue move
 		}
 	}
 	
 	/**
-	 * Starts the game.
-	 *
-	 * @return The score at the end of the game
+	 * Progresses the game by one turn.
 	 */
-	public int start()
+	private void doTurn()
 	{
-		message("GAME START: " + players[currPlayerIndex] + " to move.");
-		
-		// Keep playing while the deck still has cards
-		while (!deck.isEmpty()) {
-			if (turn()) {
-				return gameOver();
-			}
-		}
-		
-		// Everyone gets one last turn after the deck runs out
-		for (int i = 0; i < players.length; i++) {
-			if (turn()) {
-				return gameOver();
-			}
-		}
-		
-		return gameOver();
+		// Keep querying for the next move.
+		while (!executeMove(currentPlayer.getNextMove())) ;
+		// Advance to the next player.
+		currentPlayer = playerItr.next();
 	}
 	
 	/**
-	 * Plays out one turn.
-	 *
-	 * @return Whether the game is over
+	 * @return The current score earned in the game
 	 */
-	private boolean turn()
+	private int getScore()
 	{
-		if (logging) stateLog();
+		int score = 0;
+		// Add all the values of the fireworks
+		for (Map.Entry<Color, Integer> entry : fireworks.entrySet()) {
+			score += entry.getValue();
+		}
 		
-		// Keep querying the player for a move as long as the player does not give a valid one
-		while (!interpretMove(players[currPlayerIndex].move())) ;
+		return score;
+	}
+	
+	/**
+	 * Plays the game.
+	 *
+	 * @return The ending score
+	 */
+	public int play()
+	{
+		try {
+			while (true) {
+				checkGameOver();
+				doTurn();
+			}
+		}
+		catch (DeckEmpty deckEmpty) {
+			// TODO Action when deck is empty
+		}
+		catch (DeathFail deathFail) {
+			// All lives lost, game failed.
+			return 0;
+		}
+		catch (FullScore fullScore) {
+			// Calculate score.
+			return getScore();
+		}
 		
-		// The game is over if there are no lives left
-		if (lives == 0) return true;
-		
-		// Go to the next player
-		currPlayerIndex = (currPlayerIndex + 1) % players.length;
-		return false;
+		return getScore();
+	}
+	
+	/**
+	 * Resets the game to be played again.
+	 */
+	private void reset()
+	{
+		setup();
+	}
+	
+	private void println()
+	{
+		System.out.println();
+	}
+	
+	private void println(String message)
+	{
+		System.out.println(message);
+	}
+	
+	/**
+	 * If the current player is human, send the player a message.
+	 */
+	private void message(String msg)
+	{
+		if (currentPlayer instanceof Human) {
+			Human player = (Human) currentPlayer;
+			player.message(msg);
+		}
 	}
 	
 	/**
@@ -186,372 +461,29 @@ public class HanabiGame
 		
 		println("Fireworks: ");
 		StringBuilder f = new StringBuilder();
-		for (Entry<Color, Integer> e : fireworks.entrySet()) {
+		for (Map.Entry<Color, Integer> e : fireworks.entrySet()) {
 			f.append(e.getKey().ansi() + e.getValue());
 		}
 		println(f.toString());
 		println();
 		
-		for (int i = 0; i < players.length; i++) {
-			println(players[i] + "'s hand: " + hands[i]);
+		for (int i = 0; i < players.size(); i++) {
+			println(players.get(i) + "'s hand: " + players.get(i).getHand());
 		}
 		println("--------------------------------------------------------------");
 		println();
 	}
 	
-	/**
-	 * Interprets and attempts to play out the given move.
-	 *
-	 * @param move The move made by the current player
-	 * @return Whether the move was valid
-	 */
-	private boolean interpretMove(Move move)
-	{
-		for (int i = 0; i < players.length; i++) {
-			if (!players[i].check(hands, i, fireworks)) {
-				int j = -1;
-				players[j] = null;
-			}
-		}
-		
-		if (move.type == MoveType.PLAY) {
-			// Play move
-			return play(((PlayMove) move).pos);
-		}
-		else if (move.type == MoveType.DISCARD) {
-			// Discard move
-			return discard(((DiscardMove) move).pos);
-		}
-		else {
-			ClueMove cMove = (ClueMove) move;
-			
-			if (cMove.number == null) {
-				// Color clue
-				return clue(unshift(cMove.player, currPlayerIndex), cMove.color);
-			}
-			else {
-				// Number clue
-				return clue(unshift(cMove.player, currPlayerIndex), cMove.number);
-			}
-		}
-	}
-	
-	/**
-	 * Attempts to play the current player's card in the given position.
-	 *
-	 * @param pos The position to play from
-	 * @return Whether the play is a valid move
-	 */
-	private boolean play(int pos)
-	{
-		// Check if the move is valid
-		if (pos >= hands[currPlayerIndex].size()) {
-			message(currPlayerIndex, "Invalid card.");
-			return false;
-		}
-		
-		String message, altMessage = "";
-		
-		Card c = hands[currPlayerIndex].take(pos);
-		boolean success = true;
-		
-		if (fireworks.get(c.color) != c.number.ordinal()) {
-			// If the play is incorrect, remove a life and discard the card
-			lives--;
-			discard.add(c);
-			success = false;
-		}
-		else {
-			// Otherwise, play the card
-			fireworks.put(c.color, c.number.ordinal() + 1);
-			
-			// Fives give back a clue
-			if (c.number == Number.FIVE) clues++;
-		}
-		
-		Card d = null;
-		if (deck.isEmpty()) {
-			// If the deck is empty, do not draw
-			message = players[currPlayerIndex] + " has played a " + c + ".";
-			message = "You have played a " + c + ".";
-		}
-		else {
-			// Otherwise, draw
-			d = deck.draw();
-			hands[currPlayerIndex].draw(d);
-			
-			message = players[currPlayerIndex] + " has played a " + c + " and drawn a " + d + ".";
-			altMessage = "You have played a " + c + " and drawn a card.";
-		}
-		
-		// Update all players
-		for (int i = 0; i < players.length; i++) {
-			if (i != currPlayerIndex) {
-				players[i].play(shift(currPlayerIndex, i), pos);
-				if (d != null) players[i].draw(shift(currPlayerIndex, i), d);
-			}
-			else {
-				players[i].play(pos, c);
-				if (d != null) players[i].draw();
-			}
-		}
-		
-		// Message all players
-		message(message, currPlayerIndex, altMessage);
-		// Fire the play event
-		EventBus.fireEvent(new PlayEvent(players[currPlayerIndex], c, d, success));
-		return true;
-	}
-	
-	/**
-	 * Attempts to discard the current player's card in the given position.
-	 *
-	 * @param pos The position to discard from
-	 * @return Whether the discard is a valid move
-	 */
-	private boolean discard(int pos)
-	{
-		// Check whether the move is valid
-		if (pos >= hands[currPlayerIndex].size()) {
-			message(currPlayerIndex, "Invalid card.");
-			return false;
-		}
-		
-		String message, altMessage = "";
-		
-		// Discard the card and give back a clue
-		Card c = hands[currPlayerIndex].take(pos);
-		discard.add(c);
-		clues++;
-		
-		Card d = null;
-		if (deck.isEmpty()) {
-			// If the deck is empty, do not draw
-			message = players[currPlayerIndex] + " has discarded a " + c + ".";
-			message = "You have discarded a " + c + ".";
-		}
-		else {
-			// Otherwise, draw
-			d = deck.draw();
-			hands[currPlayerIndex].draw(d);
-			
-			message = players[currPlayerIndex] + " has discarded a " + c + " and drawn a " + d + ".";
-			altMessage = "You have discarded a " + c + " and drawn a card.";
-		}
-		
-		// Update all players
-		for (int i = 0; i < players.length; i++) {
-			if (i != currPlayerIndex) {
-				players[i].discard(shift(currPlayerIndex, i), pos);
-				if (d != null) players[i].draw(shift(currPlayerIndex, i), d);
-			}
-			else {
-				players[i].discard(pos, c);
-				if (d != null) players[i].draw();
-			}
-		}
-		
-		// Message all players
-		message(message, currPlayerIndex, altMessage);
-		// Fire the DiscardEvent
-		EventBus.fireEvent(new DiscardEvent(players[currPlayerIndex], c, d));
-		return true;
-	}
-	
-	/**
-	 * Gives a clue of the given color to the given player from the current player.
-	 *
-	 * @param player The player to clue
-	 * @param color  The color to clue
-	 * @return Whether the clue is a valid move
-	 */
-	private boolean clue(int player, Color color)
-	{
-		// Check if there are no clues left or if the clue is empty
-		if (clues == 0 || !hands[player].clueNonEmpty(color)) {
-			message(currPlayerIndex, "Invalid clue (" + color + " to " + players[player] + ").");
-			return false;
-		}
-		
-		// Use up a clue
-		clues--;
-		
-		// Update all players
-		for (int i = 0; i < players.length; i++) {
-			if (i != player) {
-				players[i].clue(shift(currPlayerIndex, i), shift(player, i), color);
-			}
-			else {
-				players[i].clue(shift(player, i), color, hands[player].cluedCards(color));
-			}
-		}
-		
-		// Message all players
-		message(players[currPlayerIndex] + " has clued all of " + players[player] + "'s " + color + "s.");
-		// Fire the clue event
-		EventBus.fireEvent(new ClueEvent.Color(players[currPlayerIndex], color));
-		return true;
-	}
-	
-	/**
-	 * Gives a clue of the given number to the given player from the current player.
-	 *
-	 * @param player The player to clue
-	 * @param number The number to clue
-	 * @return Whether the clue is a valid move
-	 */
-	private boolean clue(int player, Number number)
-	{
-		// Check if there are no clues left or if the clue is empty
-		if (clues == 0 || !hands[player].clueNonEmpty(number)) {
-			message(currPlayerIndex, "Invalid clue (" + number + " to " + players[player] + ").");
-			return false;
-		}
-		
-		// Use up a clue
-		clues--;
-		
-		// Update all players
-		for (int i = 0; i < players.length; i++) {
-			if (i != player) {
-				players[i].clue(shift(currPlayerIndex, i), shift(player, i), number);
-			}
-			else {
-				players[i].clue(shift(player, i), number, hands[player].cluedCards(number));
-			}
-		}
-		
-		// Message all players
-		message(players[currPlayerIndex] + " has clued all of " + players[player] + "'s " + number + "s.");
-		// Fire the ClueEvent
-		EventBus.fireEvent(new ClueEvent.Number(players[currPlayerIndex], number));
-		return true;
-	}
-	
-	/**
-	 * Calculates the score once the game is over.
-	 *
-	 * @return The score
-	 */
-	private int gameOver()
-	{
-		int score = 0;
-		for (int s : fireworks.values()) {
-			score += s;
-		}
-		
-		if (logging) {
-			stateLog();
-			message("Game over!  Final score: " + score);
-		}
-		return score;
-	}
-	
-	/**
-	 * Messages all but one player one message, and the excluded player a different message.
-	 * This is mainly used to not reveal information about card draws.
-	 *
-	 * @param message    The main message
-	 * @param alt        The player who receives an alternate message
-	 * @param altMessage The alternate message
-	 */
-	private void message(String message, int alt, String altMessage)
-	{
-		for (int i = 0; i < players.length; i++) {
-			if (i != alt) {
-				players[i].message(message);
-			}
-			else {
-				players[alt].message(altMessage);
-			}
-		}
-		
-		if (logging) {
-			println(message);
-			println("Enter anything to continue.");
-			in.nextLine();
-		}
-	}
-	
-	/**
-	 * Messages the given player.
-	 *
-	 * @param to      The player to message
-	 * @param message The message
-	 */
-	private void message(int to, String message)
-	{
-		players[to].message(message);
-		
-		if (logging) {
-			println("[" + players[to] + "] " + message);
-			println("Enter anything to continue.");
-			in.nextLine();
-		}
-	}
-	
-	/**
-	 * Messages all players.
-	 *
-	 * @param message The message
-	 */
-	private void message(String message)
-	{
-		for (Player p : players) {
-			p.message(message);
-		}
-		
-		if (logging) {
-			println(message);
-			println("Enter anything to continue.");
-			in.nextLine();
-		}
-	}
-	
-	/**
-	 * Shifts the given player index to the given POV.
-	 * If player == POV, this will return -1.
-	 *
-	 * @param player The player index to shift
-	 * @param pov    The POV to shift to
-	 * @return The shifted player index
-	 */
-	private int shift(int player, int pov)
-	{
-		return ((player - pov + players.length) % players.length) - 1;
-	}
-	
-	private int unshift(int player, int pov)
-	{
-		return (player + pov + 1) % players.length;
-	}
-	
-	public int getClueCount()
-	{
-		return clues;
-	}
-	
-	public void println()
-	{
-		System.out.println();
-	}
-	
-	public void println(String s)
-	{
-		System.out.println(Color.NONE + "[" + System.currentTimeMillis() + "] " + s + Color.NONE);
-	}
-	
 	public static void main(String[] args)
 	{
-		Player[] players = new Player[5];
-		players[0] = new JasonHanabiAI("Jackie");
-		players[1] = new JasonHanabiAI("Jason");
-		players[2] = new JasonHanabiAI("Milan");
-		players[3] = new JasonHanabiAI("Maya");
-		players[4] = new JasonHanabiAI("Pesto");
 		
 		for (int p = 4; p <= 4; p++) {
-			HanabiGame g = new HanabiGame(GameMode.NORMAL, Arrays.copyOfRange(players, 0, p), false);
+			HanabiGame g = new HanabiGame(GameMode.NORMAL, false);
+			g.addPlayer(new JasonHanabiAI("Jackie", g));
+			g.addPlayer(new JasonHanabiAI("Jason", g));
+			g.addPlayer(new JasonHanabiAI("Milan", g));
+			g.addPlayer(new JasonHanabiAI("Maya", g));
+			g.addPlayer(new JasonHanabiAI("Pesto", g));
 			
 			int MAX = 100000;
 			
@@ -559,8 +491,8 @@ public class HanabiGame
 			int score = 0;
 			double total = 0;
 			int[] scores = new int[26];
-			while (num != MAX) {
-				score = g.start();
+			while (num <= MAX) {
+				score = g.play();
 				scores[score]++;
 				total += score;
 				g.reset();

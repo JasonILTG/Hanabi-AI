@@ -1,9 +1,9 @@
 package main.parts;
-import java.util.ArrayList;
-import java.util.Collections;
-
 import main.enums.Color;
 import main.enums.Number;
+
+import java.util.ArrayList;
+import java.util.Collections;
 
 /**
  * Class for the draw deck.
@@ -55,6 +55,13 @@ public class Deck {
 	 */
 	public void shuffle() {
 		Collections.shuffle(cards);
+	}
+	
+	/**
+	 * @return The number of cards remaining in the deck
+	 */
+	public int size() {
+		return cards.size();
 	}
 	
 	/**
