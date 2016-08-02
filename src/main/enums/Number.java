@@ -20,6 +20,14 @@ public enum Number implements Comparable<Number> {
 	}
 	
 	/**
+	 * @return The integer represented by this Number object.
+	 */
+	public int getValue()
+	{
+		return this.ordinal() + 1;
+	}
+	
+	/**
 	 * @return The next number
 	 */
 	public Number next() {

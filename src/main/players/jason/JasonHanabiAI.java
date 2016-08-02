@@ -1,10 +1,10 @@
 package main.players.jason;
-import java.util.ArrayList;
-import java.util.HashMap;
 
 import main.enums.Color;
 import main.enums.GameMode;
 import main.enums.Number;
+import main.event.Event;
+import main.game.HanabiGame;
 import main.moves.ClueMove;
 import main.moves.DiscardMove;
 import main.moves.Move;
@@ -12,6 +12,9 @@ import main.moves.PlayMove;
 import main.parts.Card;
 import main.parts.Hand;
 import main.players.Player;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 
 public class JasonHanabiAI extends Player {
 	private GameMode mode;
@@ -24,11 +27,10 @@ public class JasonHanabiAI extends Player {
 	private HashMap<Color, int[]> discard;
 	private HashMap<Color, int[]> cardsSeen;
 	
-	public JasonHanabiAI(String name) {
-		super(name);
+	public JasonHanabiAI(String name, HanabiGame game) {
+		super(name, game);
 	}
 	
-	@Override
 	public void init(Hand[] hands, GameMode mode) {
 		this.mode = mode;
 		this.clues = 8;
@@ -49,15 +51,14 @@ public class JasonHanabiAI extends Player {
 		
 		this.hands = new CluedHand[hands.length];
 		for (int i = 0; i < hands.length; i++) {
-			this.hands[i] = new CluedHand(hands[i].getCards(), mode);
-			for (Card c : hands[i].getCards()) {
+			this.hands[i] = new CluedHand(hands[i].getCards(this), mode);
+			for (Card c : hands[i].getCards(this)) {
 				cardsSeen.get(c.color)[c.number.ordinal()]++;
 			}
 		}
 	}
 
-	@Override
-	public Move move() {
+	public Move getNextMove() {
 		// Check own hand for playable or discardable cards
 		ownHand.check(fireworks);
 		
@@ -295,7 +296,6 @@ public class JasonHanabiAI extends Player {
 		return clued;
 	}
 	
-	@Override
 	public void play(int player, int pos) {
 		CluedCard c = hands[player].take(pos);
 		
@@ -311,7 +311,6 @@ public class JasonHanabiAI extends Player {
 		}
 	}
 
-	@Override
 	public void play(int pos, Card c) {
 		ownHand.take(pos);
 		
@@ -329,7 +328,6 @@ public class JasonHanabiAI extends Player {
 		seeCard(c);
 	}
 	
-	@Override
 	public void discard(int player, int pos) {
 		CluedCard c = hands[player].take(pos);
 
@@ -337,7 +335,6 @@ public class JasonHanabiAI extends Player {
 		clues++;
 	}
 
-	@Override
 	public void discard(int pos, Card c) {
 		ownHand.take(pos);
 
@@ -347,7 +344,6 @@ public class JasonHanabiAI extends Player {
 		seeCard(c);
 	}
 
-	@Override
 	public void clue(int fromPlayer, int player, Color color) {
 		clues--;
 		
@@ -369,7 +365,6 @@ public class JasonHanabiAI extends Player {
 		hand.clue(color);
 	}
 
-	@Override
 	public void clue(int fromPlayer, Color color, ArrayList<Integer> pos) {
 		clues--;
 		
@@ -386,7 +381,6 @@ public class JasonHanabiAI extends Player {
 		ownHand.clue(color, pos);
 	}
 
-	@Override
 	public void clue(int fromPlayer, int player, Number number) {
 		clues--;
 		
@@ -413,7 +407,6 @@ public class JasonHanabiAI extends Player {
 		hand.clue(number);
 	}
 	
-	@Override
 	public void clue(int fromPlayer, Number number, ArrayList<Integer> pos) {
 		clues--;
 		
@@ -430,14 +423,12 @@ public class JasonHanabiAI extends Player {
 		ownHand.clue(number, pos);
 	}
 
-	@Override
 	public void draw(int player, Card c) {
 		hands[player].draw(c);
 		
 		seeCard(c);
 	}
 	
-	@Override
 	public void draw() {
 		ownHand.draw();
 	}
@@ -454,11 +445,11 @@ public class JasonHanabiAI extends Player {
 			int j = (i + playerNum + 1) % h.length;
 			
 			for (int c = 0; c < h[j].size(); c++) {
-				if (h[j].getColor(c) != hands[i].getColor(c)) {
+				if (h[j].getColor(this, c) != hands[i].getColor(c)) {
 					System.out.println("Hand error: " + h[j] + " " + hands[i]);
 					return false;
 				}
-				if (h[j].getNumber(c) != hands[i].getNumber(c)) {
+				if (h[j].getNumber(this, c) != hands[i].getNumber(c)) {
 					System.out.println("Hand error: " + h[j] + " " + hands[i]);
 					return false;
 				}
@@ -473,5 +464,17 @@ public class JasonHanabiAI extends Player {
 		}
 		
 		return true;
+	}
+	
+	@Override
+	public void onEvent(Event event)
+	{
+		return;
+	}
+	
+	@Override
+	protected Class<? extends Event>[] getListenableEventClasses()
+	{
+		return null;
 	}
 }

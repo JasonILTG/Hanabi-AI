@@ -1,4 +1,5 @@
 package main.parts;
+
 import java.util.ArrayList;
 
 import main.enums.Color;
@@ -7,27 +8,31 @@ import main.enums.Number;
 /**
  * Class for hands.
  */
-public class Hand {
+public class Hand
+{
 	private ArrayList<Card> cards;
 	
 	/**
 	 * Constructor.
 	 */
-	public Hand() {
+	public Hand()
+	{
 		cards = new ArrayList<Card>();
 	}
 	
 	/**
 	 * @return The ArrayList of cards in hand
 	 */
-	public ArrayList<Card> getCards() {
+	public ArrayList<Card> getCards()
+	{
 		return cards;
 	}
 	
 	/**
 	 * @return The number of cards in hand
 	 */
-	public int size() {
+	public int size()
+	{
 		return cards.size();
 	}
 	
@@ -36,7 +41,8 @@ public class Hand {
 	 * 
 	 * @param card The card to add
 	 */
-	public void draw(Card card) {
+	public void draw(Card card)
+	{
 		cards.add(card);
 	}
 	
@@ -46,7 +52,8 @@ public class Hand {
 	 * @param pos The position to remove the card from
 	 * @return The removed card
 	 */
-	public Card take(int pos) {
+	public Card take(int pos)
+	{
 		Card c = cards.remove(pos);
 		return c;
 	}
@@ -55,7 +62,8 @@ public class Hand {
 	 * @param pos The position
 	 * @return The color of the card in that position
 	 */
-	public Color getColor(int pos) {
+	public Color getColor(int pos)
+	{
 		return cards.get(pos).color;
 	}
 	
@@ -63,7 +71,8 @@ public class Hand {
 	 * @param pos The position
 	 * @return The number of the card in that position
 	 */
-	public Number getNumber(int pos) {
+	public Number getNumber(int pos)
+	{
 		return cards.get(pos).number;
 	}
 	
@@ -71,9 +80,10 @@ public class Hand {
 	 * @param color The color clued
 	 * @return The positions of the colors clued
 	 */
-	public ArrayList<Integer> cluedCards(Color color) {
+	public ArrayList<Integer> cluedCards(Color color)
+	{
 		ArrayList<Integer> clued = new ArrayList<Integer>();
-		for (int i = cards.size() - 1; i >= 0; i--) {
+		for (int i = cards.size() - 1; i >= 0; i --) {
 			if (cards.get(i).color == color) {
 				clued.add(i);
 			}
@@ -86,9 +96,10 @@ public class Hand {
 	 * @param number The number clued
 	 * @return The positions of the numbers clued
 	 */
-	public ArrayList<Integer> cluedCards(Number number) {
+	public ArrayList<Integer> cluedCards(Number number)
+	{
 		ArrayList<Integer> clued = new ArrayList<Integer>();
-		for (int i = cards.size() - 1; i >= 0; i--) {
+		for (int i = cards.size() - 1; i >= 0; i --) {
 			if (cards.get(i).number == number) {
 				clued.add(i);
 			}
@@ -103,9 +114,10 @@ public class Hand {
 	 * @param color The color of the clue
 	 * @return Whether the color clue is non-empty
 	 */
-	public boolean clueNonEmpty(Color color) {
+	public boolean clueNonEmpty(Color color)
+	{
 		for (Card c : cards) {
-			if (c.color.same(color)) {
+			if (c.color.isClueableBy(color)) {
 				return true;
 			}
 		}
@@ -118,7 +130,8 @@ public class Hand {
 	 * @param number The number of the clue
 	 * @return Whether the number clue is non-empty
 	 */
-	public boolean clueNonEmpty(Number number) {
+	public boolean clueNonEmpty(Number number)
+	{
 		for (Card c : cards) {
 			if (c.number == number) {
 				return true;
@@ -127,8 +140,31 @@ public class Hand {
 		return false;
 	}
 	
+	/**
+	 * Gives a color clue to this hand.
+	 */
+	public void giveClue(Color clue)
+	{
+		// Apply the clue to all cards
+		for (Card c : cards) {
+			c.giveColorClue(clue);
+		}
+	}
+	
+	/**
+	 * Gives a number clue to this hand.
+	 */
+	public void giveClue(Number clue)
+	{
+		// Apply the clue to all cards
+		for (Card c : cards) {
+			c.giveNumberClue(clue);
+		}
+	}
+	
 	@Override
-	public String toString() {
+	public String toString()
+	{
 		StringBuilder h = new StringBuilder();
 		for (Card c : cards) {
 			h.append(c.toString());
