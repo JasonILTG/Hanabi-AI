@@ -34,31 +34,43 @@ public class EventBus
 	 */
 	public static void fireEvent(Event event)
 	{
-		// Retrieve all the listeners that should be triggered. This includes the listener for the event itself and any listeners listening to its super classes.
+		// Retrieve all the listeners that should be triggered. This includes the listener for the event itself and any listeners listening to its
+		// super classes.
 		Set<EventListener> listenerSet = new HashSet<>();
-		Set<EventListener> baseSet = LISTENER_MAP.get(event.getClass());
-		// Add only if the baseSet is not null to prevent NullPointerException
-		if (baseSet != null) {
-			listenerSet.addAll(baseSet);
-		}
-		
-		// Add any listeners for the superclasses.
-		for (Class<?> superEventClass : event.getClass().getClasses()) {
-			// Only accept subclasses of the event class
-			if (Event.class.isAssignableFrom(superEventClass)) {
-				// Load the set to append
-				Set<EventListener> appendSet = LISTENER_MAP.get(superEventClass);
-				
-				// Null check
-				if (appendSet != null) {
-					listenerSet.addAll(appendSet);
-				}
-			}
-		}
+		collectListeners(event.getClass(), event, listenerSet);
 		
 		// Inform the eventListeners about the event.
 		for (EventListener listener : listenerSet) {
 			listener.onEvent(event);
+		}
+	}
+	
+	/**
+	 * Adds all listeners to be triggered.
+	 * 
+	 * @param eventClass The assigned type of the event
+	 * @param event The event itself
+	 * @param listeners The set of listeners to add to
+	 */
+	private static void collectListeners(Class<?> eventClass, Event event, Set<EventListener> listeners)
+	{
+		// Make sure the class implements Event
+		if (eventClass == null || !Event.class.isAssignableFrom(eventClass)) {
+			return;
+		}
+		
+		// Add all the listeners linked to the class
+		if (LISTENER_MAP.get(eventClass) != null) {
+			listeners.addAll(LISTENER_MAP.get(eventClass));
+		}
+		
+		// Fire event on superclass
+		collectListeners(eventClass.getSuperclass(), event, listeners);
+		
+		// Fire event on superinterfaces
+		for (Class interfaceClass : eventClass.getInterfaces()) {
+			// Add listeners
+			collectListeners(interfaceClass, event, listeners);
 		}
 	}
 }
