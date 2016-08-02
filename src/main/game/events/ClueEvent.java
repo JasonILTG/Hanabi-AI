@@ -5,9 +5,13 @@ import main.players.Player;
 public class ClueEvent
 		extends PlayerActionEvent
 {
-	private ClueEvent(Player player)
+	/** The player that this clue targets */
+	public final Player target;
+	
+	private ClueEvent(Player player, Player target)
 	{
 		super(player);
+		this.target = target;
 	}
 	
 	public static class Number
@@ -15,9 +19,9 @@ public class ClueEvent
 	{
 		public final main.enums.Number number;
 		
-		public Number(Player player, main.enums.Number number)
+		public Number(Player player, Player target, main.enums.Number number)
 		{
-			super(player);
+			super(player, target);
 			this.number = number;
 		}
 	}
@@ -27,9 +31,9 @@ public class ClueEvent
 	{
 		public final main.enums.Color color;
 		
-		public Color(Player player, main.enums.Color color)
+		public Color(Player player, Player target, main.enums.Color color)
 		{
-			super(player);
+			super(player, target);
 			this.color = color;
 		}
 	}

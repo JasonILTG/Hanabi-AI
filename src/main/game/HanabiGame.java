@@ -1,18 +1,28 @@
 package main.game;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Scanner;
+
 import main.enums.Color;
 import main.enums.GameMode;
 import main.enums.Number;
 import main.event.Event;
 import main.event.EventBus;
 import main.event.EventListener;
-import main.game.breakpoint.DeathFail;
-import main.game.breakpoint.DeckEmpty;
-import main.game.breakpoint.FullScore;
+import main.game.breakpoints.DeathFail;
+import main.game.breakpoints.DeckEmpty;
+import main.game.breakpoints.MaxScore;
+import main.game.events.ClueEvent;
 import main.game.events.DiscardEvent;
 import main.game.events.DrawEvent;
 import main.game.events.PlayEvent;
 import main.game.utils.CyclicIterator;
+import main.moves.ClueMove;
 import main.moves.DiscardMove;
 import main.moves.Move;
 import main.moves.PlayMove;
@@ -22,13 +32,6 @@ import main.parts.Hand;
 import main.players.Human;
 import main.players.Player;
 import main.players.jason.JasonHanabiAI;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Random;
-import java.util.Scanner;
 
 /**
  * Class for all of the game logic.
@@ -40,8 +43,7 @@ public class HanabiGame
 	public class Authenticator
 	{
 		private Authenticator()
-		{
-		}
+		{}
 	}
 	
 	private Authenticator auth;
@@ -56,7 +58,7 @@ public class HanabiGame
 	private int clues;
 	private int lives;
 	
-	private Deck deck;
+	private Deck deck;/**/
 	/** A map from the colors to the number of cards played for that color */
 	private HashMap<Color, Integer> fireworks;
 	private ArrayList<Card> discard;
@@ -65,12 +67,12 @@ public class HanabiGame
 	private CyclicIterator<Player> playerItr;
 	private Player currentPlayer;
 	
-	Map<Color, Map<Number, Integer>> discardCountMap;
+	HashMap<Color, Map<Number, Integer>> discardFullMap;
 	
 	/**
 	 * Constructor.
 	 *
-	 * @param mode    The game mode
+	 * @param mode The game mode
 	 * @param logging Whether to log the game states and moves
 	 */
 	public HanabiGame(GameMode mode, boolean logging)
@@ -99,11 +101,11 @@ public class HanabiGame
 			Card card = ((DiscardEvent) event).discard;
 			
 			// Add the discarded card to the mapping
-			Map<Number, Integer> coloredDiscardMap = discardCountMap.get(card.color);
+			Map<Number, Integer> coloredDiscardMap = discardFullMap.get(card.color);
 			// If the mapping does not exist yet, create one.
 			if (coloredDiscardMap == null) {
 				coloredDiscardMap = new HashMap<>();
-				discardCountMap.put(card.color, coloredDiscardMap);
+				discardFullMap.put(card.color, coloredDiscardMap);
 			}
 			
 			Integer currentDiscardCount = coloredDiscardMap.get(card.number);
@@ -133,15 +135,31 @@ public class HanabiGame
 	}
 	
 	/**
+	 * @return The list of all players present in the game
+	 */
+	public List<Player> getPlayers()
+	{
+		return players;
+	}
+	
+	/**
+	 * @return The current player who is executing a move
+	 */
+	public Player getCurrentPlayer()
+	{
+		return currentPlayer;
+	}
+	
+	/**
 	 * Adds a player to this game
 	 */
-	public void addPlayer(Player player)
+	protected void addPlayer(Player player)
 	{
 		players.add(player);
 	}
 	
 	/**
-	 * Prepares the game to be ready to play.
+	 * Prepares the game to be ready to start.
 	 */
 	private void setup()
 	{
@@ -157,45 +175,39 @@ public class HanabiGame
 			// Include extra color if appropriate
 			deck = new Deck(mode.extraColor, mode.hard);
 		}
-		deck.shuffle();
+		deck.reset();
 		
 		// Initialize discard
 		discard = new ArrayList<>();
-		discardCountMap = new HashMap<>();
+		discardFullMap = new HashMap<>();
 		
 		// Initialize fireworks
 		fireworks = new HashMap<>();
 		for (Color color : mode.colors) {
 			fireworks.put(color, 0);
 		}
-	}
-	
-	/**
-	 * Executes the actions to do just before the start of a game.
-	 * <br>
-	 * The actions include dealing cards and randomizing the first player.
-	 */
-	private void preStart()
-	{
+		
 		// Create and build hands
 		Hand[] hands = new Hand[players.size()];
 		int handSize = HAND_SIZES[players.size()];
 		
-		for (int index = 0; index < hands.length; index++) {
-			hands[index] = new Hand(players.get(index));
+		for (int index = 0; index < hands.length; index ++) {
+			hands[index] = new Hand();
 			// Draw cards
-			for (int i = 0; i < handSize; i++) {
+			for (int i = 0; i < handSize; i ++) {
 				hands[index].draw(deck.draw());
 			}
 			// Give hand to player
 			players.get(index).setHand(hands[index]);
+			// inform player of the other hands
+			players.get(index).informAllHands(hands);
 		}
 		
 		// Create player iterator
 		playerItr = new CyclicIterator<>(players);
 		// Go to a random position in the list
 		int startPos = new Random().nextInt(players.size());
-		for (int i = 0; i < startPos; i++) {
+		for (int i = 0; i < startPos; i ++) {
 			playerItr.next();
 		}
 	}
@@ -205,10 +217,10 @@ public class HanabiGame
 	 *
 	 * @throws DeathFail The players failed the game by losing all their lives
 	 * @throws DeckEmpty The last card in the deck was drawn
-	 * @throws FullScore The players achieved the highest score possible under their present conditions
+	 * @throws MaxScore The players achieved the highest score possible under their present conditions
 	 */
 	private void checkGameOver()
-			throws DeathFail, DeckEmpty, FullScore
+			throws DeathFail, DeckEmpty, MaxScore
 	{
 		// If there are no more lives, game ends.
 		if (lives == 0) throw new DeathFail();
@@ -217,11 +229,29 @@ public class HanabiGame
 		if (deck.isEmpty()) throw new DeckEmpty();
 		
 		// Check that max score is reached
-		boolean fullScore = true;
+		boolean maxScoreReached = true;
 		Map<Color, Integer> maxScoreMap = buildMaxScoreMap();
-		for (Map.Entry<Color, Integer> maxScoreEntry : maxScoreMap.entrySet())
-		{
-			if ()
+		for (Map.Entry<Color, Integer> maxScoreEntry : maxScoreMap.entrySet()) {
+			if (maxScoreEntry.getValue() != fireworks.get(maxScoreEntry.getKey())) {
+				// This color is not maxed out yet
+				maxScoreReached = false;
+				break;
+			}
+		}
+		// If the max score is reached, double-check by rebuilding the discard map
+		if (maxScoreReached) {
+			rebuildDiscardFullMap();
+			// Check again that the max score is reached.
+			maxScoreMap = buildMaxScoreMap();
+			for (Map.Entry<Color, Integer> maxScoreEntry : maxScoreMap.entrySet()) {
+				if (maxScoreEntry.getValue() != fireworks.get(maxScoreEntry.getKey())) {
+					// This color is not maxed out yet
+					maxScoreReached = false;
+					break;
+				}
+			}
+			
+			if (maxScoreReached) throw new MaxScore();
 		}
 	}
 	
@@ -234,7 +264,7 @@ public class HanabiGame
 		// Variable names are confusing in this section; just trust me that this will work. Probably.
 		Map<Color, Integer> maxScoreMap = new HashMap<>();
 		
-		for (Map.Entry<Color, Map<Number, Integer>> coloredDiscardEntry : discardCountMap.entrySet()) {
+		for (Map.Entry<Color, Map<Number, Integer>> coloredDiscardEntry : discardFullMap.entrySet()) {
 			// Initialize to 5
 			int maxScore = 5;
 			
@@ -255,26 +285,44 @@ public class HanabiGame
 	}
 	
 	/**
-	 * Rebuilds the discard count using the discard pile to verify that the information is correct.
+	 * Rebuilds the discard count using the discard pile to verify that the information stored in the map is correct.
 	 */
-	private void rebuildDiscardCountMap()
+	private void rebuildDiscardFullMap()
 	{
-		// TODO
+		discardFullMap.clear();
+		
+		// Iterate over the discard pile to count the number of discards
+		for (Card c : discard) {
+			// Add the discarded card to the mapping
+			Map<Number, Integer> coloredDiscardMap = discardFullMap.get(c.color);
+			// If the mapping does not exist yet, create one.
+			if (coloredDiscardMap == null) {
+				coloredDiscardMap = new HashMap<>();
+				discardFullMap.put(c.color, coloredDiscardMap);
+			}
+			
+			Integer currentDiscardCount = coloredDiscardMap.get(c.number);
+			// If the mapping does not exist yet, set to 0.
+			if (currentDiscardCount == null) {
+				currentDiscardCount = 0;
+			}
+			// Add one to the discard count and save
+			coloredDiscardMap.put(c.number, currentDiscardCount + 1);
+		}
 	}
 	
 	/**
-	 * Execute a play move the player requested.
+	 * Execute a start move the player requested.
 	 *
 	 * @return Whether the execution was successful
 	 */
 	private boolean play(PlayMove move)
 	{
-		// Check play index
+		// Check start index
 		if (move.pos < 0 || move.pos >= currentPlayer.getHand().size()) {
 			// Message the player if it is a human
 			if (currentPlayer instanceof Human) {
-				Human player = (Human) currentPlayer;
-				player.message("Invalid card index.");
+				messagePlayerIfHuman("Invalid card index.");
 			}
 			return false;
 		}
@@ -287,7 +335,7 @@ public class HanabiGame
 		}
 		catch (IndexOutOfBoundsException ex) {} // Happens when there are no cards left.
 		
-		// Evaluate if the play is successful or not.
+		// Evaluate if the start is successful or not.
 		int expectedNumber = fireworks.get(play.color).intValue() + 1;
 		PlayEvent playEvent;
 		if (play.number.getValue() == expectedNumber) {
@@ -295,14 +343,14 @@ public class HanabiGame
 			fireworks.put(play.color, play.number.getValue());
 			// If the players played a 5, increase number of clues by 1.
 			if (play.number == Number.FIVE) {
-				clues++;
+				clues ++;
 			}
 			playEvent = new PlayEvent(currentPlayer, play, true);
 		}
 		else {
 			// Play unsuccessful, the card goes to the discard pile, and players lose one life.
 			discard.add(play);
-			lives--;
+			lives --;
 			playEvent = new PlayEvent(currentPlayer, play, false);
 		}
 		
@@ -321,12 +369,11 @@ public class HanabiGame
 	 */
 	private boolean discard(DiscardMove move)
 	{
-		// Check play index
+		// Check start index
 		if (move.pos < 0 || move.pos >= currentPlayer.getHand().size()) {
 			// Message the player if it is a human
 			if (currentPlayer instanceof Human) {
-				Human player = (Human) currentPlayer;
-				player.message("Invalid card index.");
+				messagePlayerIfHuman("Invalid card index.");
 			}
 			return false;
 		}
@@ -351,6 +398,41 @@ public class HanabiGame
 	}
 	
 	/**
+	 * Execute a clue move the player requested.
+	 *
+	 * @return
+	 */
+	private boolean clue(ClueMove move)
+	{
+		// Check if the clue is available.
+		if (clues == 0) {
+			messagePlayerIfHuman("Out of clues.");
+			return false;
+		}
+		
+		// Use a clue
+		clues --;
+		// Give the clue
+		if (move.color != null) {
+			move.target.getHand().giveClue(move.color);
+			// Fire the event
+			EventBus.fireEvent(new ClueEvent.Color(currentPlayer, move.target, move.color));
+		}
+		else if (move.number != null) {
+			move.target.getHand().giveClue(move.number);
+			// Fire the event
+			EventBus.fireEvent(new ClueEvent.Number(currentPlayer, move.target, move.number));
+		}
+		else {
+			// Execution not successful - what happened?
+			return false;
+		}
+		
+		// Execution successful.
+		return true;
+	}
+	
+	/**
 	 * Executes a move given by the player.
 	 *
 	 * @param m The move to execute
@@ -358,13 +440,17 @@ public class HanabiGame
 	 */
 	private boolean executeMove(Move m)
 	{
-		switch (m.type) {
+		// Execute based on the type of move
+		switch (m.type)
+		{
 			case PLAY:
 				return play((PlayMove) m);
 			case DISCARD:
-				break; // TODO execute the discard move
+				return discard((DiscardMove) m);
 			case CLUE:
-				break;// TODO execute the clue move
+				return clue((ClueMove) m);
+			default:
+				return false;
 		}
 	}
 	
@@ -374,7 +460,7 @@ public class HanabiGame
 	private void doTurn()
 	{
 		// Keep querying for the next move.
-		while (!executeMove(currentPlayer.getNextMove())) ;
+		while (!executeMove(currentPlayer.getNextMove()));
 		// Advance to the next player.
 		currentPlayer = playerItr.next();
 	}
@@ -385,6 +471,9 @@ public class HanabiGame
 	private int getScore()
 	{
 		int score = 0;
+		// Check death
+		if (lives == 0) return score;
+		
 		// Add all the values of the fireworks
 		for (Map.Entry<Color, Integer> entry : fireworks.entrySet()) {
 			score += entry.getValue();
@@ -398,7 +487,7 @@ public class HanabiGame
 	 *
 	 * @return The ending score
 	 */
-	public int play()
+	public int start()
 	{
 		try {
 			while (true) {
@@ -407,13 +496,31 @@ public class HanabiGame
 			}
 		}
 		catch (DeckEmpty deckEmpty) {
-			// TODO Action when deck is empty
+			// Iterate over all the players once, and then end the game.
+			for (int countdown = 0; countdown < players.size(); countdown ++) {
+				// Check that the game should end
+				try {
+					checkGameOver();
+				}
+				catch (MaxScore maxScore) {
+					return getScore();
+				}
+				catch (DeathFail deathFail) {
+					return 0;
+				}
+				catch (DeckEmpty deckEmpty1) {
+					// Expected error.
+				}
+				
+				// Do another turn.
+				doTurn();
+			}
 		}
 		catch (DeathFail deathFail) {
 			// All lives lost, game failed.
 			return 0;
 		}
-		catch (FullScore fullScore) {
+		catch (MaxScore maxScore) {
 			// Calculate score.
 			return getScore();
 		}
@@ -442,7 +549,7 @@ public class HanabiGame
 	/**
 	 * If the current player is human, send the player a message.
 	 */
-	private void message(String msg)
+	private void messagePlayerIfHuman(String msg)
 	{
 		if (currentPlayer instanceof Human) {
 			Human player = (Human) currentPlayer;
@@ -467,7 +574,7 @@ public class HanabiGame
 		println(f.toString());
 		println();
 		
-		for (int i = 0; i < players.size(); i++) {
+		for (int i = 0; i < players.size(); i ++) {
 			println(players.get(i) + "'s hand: " + players.get(i).getHand());
 		}
 		println("--------------------------------------------------------------");
@@ -477,7 +584,7 @@ public class HanabiGame
 	public static void main(String[] args)
 	{
 		
-		for (int p = 4; p <= 4; p++) {
+		for (int p = 4; p <= 4; p ++) {
 			HanabiGame g = new HanabiGame(GameMode.NORMAL, false);
 			g.addPlayer(new JasonHanabiAI("Jackie", g));
 			g.addPlayer(new JasonHanabiAI("Jason", g));
@@ -492,11 +599,11 @@ public class HanabiGame
 			double total = 0;
 			int[] scores = new int[26];
 			while (num <= MAX) {
-				score = g.play();
-				scores[score]++;
+				score = g.start();
+				scores[score] ++;
 				total += score;
 				g.reset();
-				num++;
+				num ++;
 				
 				if (num % (MAX / 100) == 0) {
 					System.out.print(".");
@@ -512,7 +619,7 @@ public class HanabiGame
 			
 			System.out.println();
 			System.out.println("Final score distribution (" + p + " players): ");
-			for (int i = 0; i < scores.length; i++) {
+			for (int i = 0; i < scores.length; i ++) {
 				System.out.println(i + ": " + scores[i]);
 			}
 			System.out.println("Average over " + num + " games: " + total / num);

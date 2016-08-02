@@ -1,50 +1,31 @@
 package main.parts;
 
-import com.sun.istack.internal.Nullable;
+import java.util.ArrayList;
+
 import main.enums.Color;
 import main.enums.Number;
-import main.game.HanabiGame;
-import main.players.Player;
-
-import java.util.ArrayList;
 
 /**
  * Class for hands.
  */
 public class Hand
 {
-	/** The hand remembers its owner so that the owner cannot access its own hand */
-	private Player owner;
 	private ArrayList<Card> cards;
 	
 	/**
 	 * Constructor.
 	 */
-	public Hand(Player owner)
+	public Hand()
 	{
-		this.owner = owner;
 		cards = new ArrayList<Card>();
 	}
 	
 	/**
-	 * A secure way for the game to retrieve the hand of a player.
-	 *
 	 * @return The ArrayList of cards in hand
 	 */
-	public ArrayList<Card> getCards(HanabiGame.Authenticator auth)
+	public ArrayList<Card> getCards()
 	{
 		return cards;
-	}
-	
-	/**
-	 * A safe way for players to retrieve the hand of a player without worrying about accidentally revealing the player's own hand
-	 *
-	 * @return The ArrayList of cards in hand
-	 */
-	@Nullable
-	public ArrayList<Card> getCards(Player request)
-	{
-		return request == owner ? null : cards;
 	}
 	
 	/**
@@ -57,7 +38,7 @@ public class Hand
 	
 	/**
 	 * Adds the given card to the hand.
-	 *
+	 * 
 	 * @param card The card to add
 	 */
 	public void draw(Card card)
@@ -67,7 +48,7 @@ public class Hand
 	
 	/**
 	 * Removes and returns the card from the given position.
-	 *
+	 * 
 	 * @param pos The position to remove the card from
 	 * @return The removed card
 	 */
@@ -78,47 +59,21 @@ public class Hand
 	}
 	
 	/**
-	 * A secure way for the game to get information about the hand of a player.
-	 *
 	 * @param pos The position
 	 * @return The color of the card in that position
 	 */
-	public Color getColor(HanabiGame.Authenticator auth, int pos)
+	public Color getColor(int pos)
 	{
 		return cards.get(pos).color;
 	}
 	
 	/**
-	 * A safe way for players to get information about a player's hand without worrying about accidentally revealing the player's own hand
-	 *
-	 * @param pos The position
-	 * @return The color of the card in that position
-	 */
-	public Color getColor(Player request, int pos)
-	{
-		return request == owner ? null : cards.get(pos).color;
-	}
-	
-	/**
-	 * A secure way for the game to retrieve the hand of a player.
-	 *
 	 * @param pos The position
 	 * @return The number of the card in that position
 	 */
-	public Number getNumber(HanabiGame.Authenticator auth, int pos)
+	public Number getNumber(int pos)
 	{
 		return cards.get(pos).number;
-	}
-	
-	/**
-	 * A safe way for players to get information about a player's hand without worrying about accidentally revealing the player's own hand
-	 *
-	 * @param pos The position
-	 * @return The number of the card in that position
-	 */
-	public Number getNumber(Player request, int pos)
-	{
-		return request == owner ? null : cards.get(pos).number;
 	}
 	
 	/**
@@ -128,7 +83,7 @@ public class Hand
 	public ArrayList<Integer> cluedCards(Color color)
 	{
 		ArrayList<Integer> clued = new ArrayList<Integer>();
-		for (int i = cards.size() - 1; i >= 0; i--) {
+		for (int i = cards.size() - 1; i >= 0; i --) {
 			if (cards.get(i).color == color) {
 				clued.add(i);
 			}
@@ -144,7 +99,7 @@ public class Hand
 	public ArrayList<Integer> cluedCards(Number number)
 	{
 		ArrayList<Integer> clued = new ArrayList<Integer>();
-		for (int i = cards.size() - 1; i >= 0; i--) {
+		for (int i = cards.size() - 1; i >= 0; i --) {
 			if (cards.get(i).number == number) {
 				clued.add(i);
 			}
@@ -155,14 +110,14 @@ public class Hand
 	
 	/**
 	 * Checks whether the given color clue is non-empty for this hand.
-	 *
+	 * 
 	 * @param color The color of the clue
 	 * @return Whether the color clue is non-empty
 	 */
 	public boolean clueNonEmpty(Color color)
 	{
 		for (Card c : cards) {
-			if (c.color.same(color)) {
+			if (c.color.isClueableBy(color)) {
 				return true;
 			}
 		}
@@ -171,7 +126,7 @@ public class Hand
 	
 	/**
 	 * Checks whether the given number clue is non-empty for this hand.
-	 *
+	 * 
 	 * @param number The number of the clue
 	 * @return Whether the number clue is non-empty
 	 */
@@ -185,13 +140,35 @@ public class Hand
 		return false;
 	}
 	
+	/**
+	 * Gives a color clue to this hand.
+	 */
+	public void giveClue(Color clue)
+	{
+		// Apply the clue to all cards
+		for (Card c : cards) {
+			c.giveColorClue(clue);
+		}
+	}
+	
+	/**
+	 * Gives a number clue to this hand.
+	 */
+	public void giveClue(Number clue)
+	{
+		// Apply the clue to all cards
+		for (Card c : cards) {
+			c.giveNumberClue(clue);
+		}
+	}
+	
 	@Override
 	public String toString()
 	{
-		StringBuilder handBuilder = new StringBuilder();
+		StringBuilder h = new StringBuilder();
 		for (Card c : cards) {
-			handBuilder.append(c.toString());
+			h.append(c.toString());
 		}
-		return handBuilder.toString();
+		return h.toString();
 	}
 }
