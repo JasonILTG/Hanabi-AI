@@ -7,6 +7,8 @@ import java.util.Random;
 import main.enums.Color;
 import main.enums.GameMode;
 import main.enums.Number;
+import main.event.Event;
+import main.game.HanabiGame;
 import main.moves.ClueMove;
 import main.moves.DiscardMove;
 import main.moves.Move;
@@ -31,11 +33,10 @@ public class JasonHanabiAI extends Player {
 	private HashMap<Color, int[]> discard;
 	private HashMap<Color, int[]> cardsSeen;
 	
-	public JasonHanabiAI(String name) {
-		super(name);
+	public JasonHanabiAI(String name, HanabiGame game) {
+		super(name, game);
 	}
 	
-	@Override
 	public void init(Hand[] hands, GameMode mode) {
 		this.mode = mode;
 		this.clues = 8;
@@ -63,8 +64,7 @@ public class JasonHanabiAI extends Player {
 		}
 	}
 
-	@Override
-	public Move move() {
+	public Move getNextMove() {
 		// Check own hand for playable or discardable cards
 		ownHand.check(fireworks);
 		
@@ -236,7 +236,7 @@ public class JasonHanabiAI extends Player {
 		CluedHand h = hands[player];
 		
 		for (Color c : h.getCard(pos).getPColors()) {
-			if (fireworks.get(c) < Number.VALUES.length && c.same(color) && h.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(c)])) {
+			if (fireworks.get(c) < Number.VALUES.length && c.isClueableBy(color) && h.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(c)])) {
 				return true;
 			}
 		}
@@ -255,7 +255,7 @@ public class JasonHanabiAI extends Player {
 	
 	private boolean possiblyPlayable(int pos, Color color) {
 		for (Color c : ownHand.getCard(pos).getPColors()) {
-			if (fireworks.get(c) < Number.VALUES.length && c.same(color) && ownHand.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(c)])) {
+			if (fireworks.get(c) < Number.VALUES.length && c.isClueableBy(color) && ownHand.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(c)])) {
 				return true;
 			}
 		}
@@ -274,7 +274,7 @@ public class JasonHanabiAI extends Player {
 	private boolean possiblyFinessable(int player, int pos, Color color) {
 		CluedHand h = hands[player];
 		for (Color c : h.getCard(pos).getPColors()) {
-			if (c.same(color) && fireworks.get(color) < 4 && h.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(color) + 1])) {
+			if (c.isClueableBy(color) && fireworks.get(color) < 4 && h.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(color) + 1])) {
 				return true;
 			}
 		}
@@ -293,7 +293,7 @@ public class JasonHanabiAI extends Player {
 	
 	private boolean possiblyFinessable(int pos, Color color) {
 		for (Color c : ownHand.getCard(pos).getPColors()) {
-			if (c.same(color) && fireworks.get(color) < 4 && ownHand.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(color) + 1])) {
+			if (c.isClueableBy(color) && fireworks.get(color) < 4 && ownHand.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(color) + 1])) {
 				return true;
 			}
 		}
@@ -359,7 +359,7 @@ public class JasonHanabiAI extends Player {
 		CluedHand hand = hands[player];
 		ArrayList<Integer> clued = new ArrayList<Integer>();
 		for (int i = hand.size() - 1; i >= 0; i--) {
-			if (hand.getColor(i).same(color)) {
+			if (hand.getColor(i).isClueableBy(color)) {
 				clued.add(i);
 			}
 		}
@@ -382,7 +382,7 @@ public class JasonHanabiAI extends Player {
 		
 		ArrayList<Integer> possible = new ArrayList<Integer>();
 		for (int i = h.size() - 1; i >= 0; i--) {
-			if (h.getColor(i).same(color) && possiblyPlayable(player, i, color) && !h.getMark(i).cluedPlay()) {
+			if (h.getColor(i).isClueableBy(color) && possiblyPlayable(player, i, color) && !h.getMark(i).cluedPlay()) {
 				possible.add(i);
 			}
 		}
@@ -486,7 +486,7 @@ public class JasonHanabiAI extends Player {
 		
 		ArrayList<Integer> possible = new ArrayList<Integer>();
 		for (int i = h.size() - 1; i >= 0; i--) {
-			if (h.getColor(i).same(color) && possiblyFinessable(player, i, color) && !h.getMark(i).cluedPlay()) {
+			if (h.getColor(i).isClueableBy(color) && possiblyFinessable(player, i, color) && !h.getMark(i).cluedPlay()) {
 				possible.add(i);
 			}
 		}
@@ -674,8 +674,7 @@ public class JasonHanabiAI extends Player {
 			}
 		}
 	}
-		
-	@Override
+	
 	public void play(int player, int pos) {
 		CluedCard c = hands[player].take(pos);
 		
@@ -692,8 +691,7 @@ public class JasonHanabiAI extends Player {
 		
 		willBePlayed.get(c.color)[c.number.ordinal()] = true;
 	}
-	
-	@Override
+
 	public void play(int pos, Card c) {
 		ownHand.take(pos);
 		
@@ -713,7 +711,6 @@ public class JasonHanabiAI extends Player {
 		seeCard(c);
 	}
 	
-	@Override
 	public void discard(int player, int pos) {
 		CluedCard c = hands[player].take(pos);
 
@@ -721,7 +718,6 @@ public class JasonHanabiAI extends Player {
 		clues++;
 	}
 	
-	@Override
 	public void discard(int pos, Card c) {
 		ownHand.take(pos);
 
@@ -730,8 +726,7 @@ public class JasonHanabiAI extends Player {
 		
 		seeCard(c);
 	}
-	
-	@Override
+
 	public void clue(int fromPlayer, int player, Color color) {
 		clues--;
 		
@@ -762,8 +757,7 @@ public class JasonHanabiAI extends Player {
 		
 		hand.clue(color);
 	}
-	
-	@Override
+
 	public void clue(int fromPlayer, Color color, ArrayList<Integer> pos) {
 		clues--;
 		
@@ -783,8 +777,7 @@ public class JasonHanabiAI extends Player {
 		
 		ownHand.clue(color, pos);
 	}
-	
-	@Override
+
 	public void clue(int fromPlayer, int player, Number number) {
 		clues--;
 		
@@ -830,7 +823,6 @@ public class JasonHanabiAI extends Player {
 		hand.clue(number);
 	}
 	
-	@Override
 	public void clue(int fromPlayer, Number number, ArrayList<Integer> pos) {
 		clues--;
 		
@@ -863,14 +855,12 @@ public class JasonHanabiAI extends Player {
 		ownHand.clue(number, pos);
 	}
 
-	@Override
 	public void draw(int player, Card c) {
 		hands[player].draw(c);
 		
 		seeCard(c);
 	}
 	
-	@Override
 	public void draw() {
 		ownHand.draw();
 	}
@@ -895,5 +885,17 @@ public class JasonHanabiAI extends Player {
 			if (a > b) return 1;
 			return 0;
 		}
+	}
+	
+	@Override
+	public void onEvent(Event event)
+	{
+		return;
+	}
+	
+	@Override
+	protected Class<? extends Event>[] getListenableEventClasses()
+	{
+		return null;
 	}
 }
