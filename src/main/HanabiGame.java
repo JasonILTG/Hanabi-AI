@@ -1,4 +1,6 @@
 package main;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -31,6 +33,7 @@ public class HanabiGame {
 	
 	public final GameMode mode;
 	private final boolean logging;
+	private final boolean pause;
 	
 	private int clues;
 	private int lives;
@@ -51,10 +54,11 @@ public class HanabiGame {
 	 * @param players The array of players
 	 * @param logging Whether to log the game states and moves
 	 */
-	public HanabiGame(GameMode mode, Player[] players, boolean logging) {
+	public HanabiGame(GameMode mode, Player[] players, boolean logging, boolean pause) {
 		this.mode = mode;
 		this.players = players;
 		this.logging = logging;
+		this.pause = pause;
 		
 		// Initialize deck
 		if (mode == GameMode.NORMAL) {
@@ -195,13 +199,6 @@ public class HanabiGame {
 	 * @return Whether the move was valid
 	 */
 	private boolean interpretMove(Move move) {
-		for (int i = 0; i < players.length; i++) {
-			if (!players[i].check(hands, i, fireworks)) {
-				int j = -1;
-				players[j] = null;
-			}
-		}
-		
 		if (move.type == MoveType.PLAY) {
 			// Play move
 			return play(((PlayMove) move).pos);
@@ -241,6 +238,10 @@ public class HanabiGame {
 		if (fireworks.get(c.color) != c.number.ordinal()) {
 			// If the play is incorrect, remove a life and discard the card
 			lives--;
+			if (lives == 0 && logging) {
+				System.out.println(Color.RED.ansi() + "FAIL" + Color.NONE.ansi());
+				if (pause) in.nextLine();
+			}
 			discard.add(c);
 		} else {
 			// Otherwise, play the card
@@ -431,7 +432,7 @@ public class HanabiGame {
 		if (logging) {
 			println(message);
 			println("Enter anything to continue.");
-			in.nextLine();
+			if (pause) in.nextLine();
 		}
 	}
 	
@@ -447,7 +448,7 @@ public class HanabiGame {
 		if (logging) {
 			println("[" + players[to] + "] " + message);
 			println("Enter anything to continue.");
-			in.nextLine();
+			if (pause) in.nextLine();
 		}
 	}
 	
@@ -464,7 +465,7 @@ public class HanabiGame {
 		if (logging) {
 			println(message);
 			println("Enter anything to continue.");
-			in.nextLine();
+			if (pause) in.nextLine();
 		}
 	}
 	
@@ -492,7 +493,10 @@ public class HanabiGame {
 		System.out.println(Color.NONE + "[" + System.currentTimeMillis() + "] " + s + Color.NONE);
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
+		// PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter("Hanabi.out")));
+		PrintStream out = System.out;
+		
 		Player[] players = new Player[5];
 		players[0] = new JasonHanabiAI("Jackie");
 		players[1] = new JasonHanabiAI("Jason");
@@ -501,14 +505,14 @@ public class HanabiGame {
 		players[4] = new JasonHanabiAI("Pesto");
 		
 		for (int p = 4; p <= 4; p++) {
-			HanabiGame g = new HanabiGame(GameMode.NORMAL, Arrays.copyOfRange(players, 0, p), false);
+			HanabiGame g = new HanabiGame(GameMode.NORMAL, Arrays.copyOfRange(players, 0, p), false, false);
 			
-			int MAX = 100000;
+			int MAX = 10000;
 			
 			int num = 0;
 			int score = 0;
 			double total = 0;
-			int[] scores = new int[26];
+			int[] scores = new int[31];
 			while(num != MAX) {
 				score = g.start();
 				scores[score]++;
@@ -528,12 +532,14 @@ public class HanabiGame {
 				}*/
 			}
 			
-			System.out.println();
-			System.out.println("Final score distribution (" + p + " players): ");
+			out.println();
+			out.println("Final score distribution (" + p + " players): ");
 			for (int i = 0; i < scores.length; i++) {
-				System.out.println(i + ": " + scores[i]);
+				out.println(i + ": " + scores[i]);
 			}
-			System.out.println("Average over " + num + " games: " + total / num);
+			out.println("Average over " + num + " games: " + total / num);
+			
+			//out.close();
 		}
 	}
 }

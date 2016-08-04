@@ -1,6 +1,8 @@
 package main.players.jason;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Random;
 
 import main.enums.Color;
 import main.enums.GameMode;
@@ -14,6 +16,11 @@ import main.parts.Hand;
 import main.players.Player;
 
 public class JasonHanabiAI extends Player {
+	private static final Random rand = new Random();
+	
+	private static final boolean CLUE_DISCARD = false;
+	private static final boolean FINESSE = false;
+	
 	private GameMode mode;
 	private int clues;
 	private int lives;
@@ -61,24 +68,31 @@ public class JasonHanabiAI extends Player {
 		// Check own hand for playable or discardable cards
 		ownHand.check(fireworks);
 		
-		// Prevent danger cards from being discarded
-		if (clues > 0 && clues < 1) {
-			for (int i = 0; i < hands.length; i++) {
-				CluedHand h = hands[i];
-				if(dangerous(i, 0) && !dangerous(i,1)){
-					if (h.getMark(0) == Marker.NOT_DISCARD) continue;
-					Color dNumber = h.getColor(0);
-					if(getClued(i, dNumber).size() <= 1){
-						return new ClueMove(i, dNumber);
-					}
-				}
+		// Then play finessed cards
+		for (int i = ownHand.size() - 1; i >= 0; i--) {
+			if (ownHand.getMark(i).finesse()) {
+				return new PlayMove(i);
 			}
 		}
 		
-		// Then play cards
+		// Then play normally clued cards
 		for (int i = ownHand.size() - 1; i >= 0; i--) {
 			if (ownHand.getMark(i).play()) {
 				return new PlayMove(i);
+			}
+		}
+		
+		// Prevent dangerous cards from being discarded
+		if (CLUE_DISCARD) if (clues == 1) {
+			for (int i = 0; i < hands.length; i++) {
+				CluedHand h = hands[i];
+				int chop = getChop(i);
+				if(dangerous(i, chop) && !h.isClued(chop) && numPlays(i) == 0){
+					Number number = h.getNumber(chop);
+					if(getClued(i, number).size() == 1){
+						return new ClueMove(i, number);
+					}
+				}
 			}
 		}
 		
@@ -86,49 +100,85 @@ public class JasonHanabiAI extends Player {
 		if (clues > 0) {
 			// Then look for good clues
 			
-			// Direct play clues
-			for (int i = 0; i < hands.length; i++) {
+			// Sort players by number of playable cards they have
+			ArrayList<Integer> players = new ArrayList<Integer>();
+			for (int i = 0; i < hands.length; i++) players.add(i);
+			players.sort(new PlayerComp());
+			
+			for (int i : players) {
 				CluedHand h = hands[i];
 				
 				// Get positions of playable cards
 				ArrayList<Integer> playable = getPlayable(i);
+				if (FINESSE) {
+					// Finesse clues
+					fSearch:
+					for (int pos : playable) {
+						// If already marked to play, ignore
+						if (h.getMark(pos) == Marker.CLUED_PLAY) continue;
+						
+						if (h.getNumber(pos).next() != null) {
+							// If it's not a 5, look for finesse
+							Color color = h.getColor(pos);
+							Number number = h.getNumber(pos);
+							
+							// Make sure the card is correctly indicated by the finesse
+							if (finessedPos(i, color, number) != pos) continue;
+							
+							// Make sure no one has a duplicate card
+							for (int o : players) {
+								if (i == o) continue;
+								
+								CluedHand oh = hands[o];
+								for (int oPos = oh.size() - 1; oPos >= 0; oPos--) {
+									if (oh.getColor(oPos) == color && oh.getNumber(oPos) == number) {
+										continue fSearch;
+									}
+								}
+							}
+							
+							// Look for the next card
+							for (int f = i + 1; f < hands.length; f++) {
+								CluedHand fh = hands[f];
+								
+								for (int fPos = fh.size() - 1; fPos >= 0; fPos--) {
+									if (fh.getColor(fPos) == color && fh.getNumber(fPos) == number.next()) {
+										if (finesseClueIndicates(f, number.next()) == fPos && playClueIndicates(f, number.next()) == -1) {
+											return new ClueMove(f, number.next());
+										}
+										
+										if (finesseClueIndicates(f, color) == fPos && playClueIndicates(f, color) == -1) {
+											if (color != Color.MULTI) return new ClueMove(f, color);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
 				
-				search:
+				// Direct play clues
 				for (int pos : playable) {
 					// If already marked to play, ignore
 					if (h.getMark(pos) == Marker.CLUED_PLAY) continue;
 					
-					if (!h.isNClued(pos)) {
-						// If not already number clued, check if number clue will work
-						ArrayList<Integer> clued = getClued(i, h.getNumber(pos));
-						for (int c : clued) {
-							if (c == pos) break;
-							
-							// If an earlier card is not number clued, continue the search
-							if (!h.isNClued(c)) continue search;
-						}
-						
+					if (rand.nextInt(2) == 0 && playClueIndicates(i, h.getNumber(pos)) == pos) {
 						return new ClueMove(i, h.getNumber(pos));
 					}
 					
-					if (!h.isCClued(pos)) {
-						// If not already color clued, check if color clue will work
-						ArrayList<Integer> clued = getClued(i, h.getColor(pos));
-						for (int c : clued) {
-							if (c == pos) break;
-							
-							// If an earlier card is not color clued, continue the search
-							if (!h.isCClued(c)) continue search;
-						}
-						
-						return new ClueMove(i, h.getColor(pos));
+					if (playClueIndicates(i, h.getColor(pos)) == pos) {
+						if (h.getColor(pos) != Color.MULTI) return new ClueMove(i, h.getColor(pos));
+					}
+					
+					if (playClueIndicates(i, h.getNumber(pos)) == pos) {
+						return new ClueMove(i, h.getNumber(pos));
 					}
 				}
 			}
 		}
 		
 		// If all else fails, discard
-		return new DiscardMove(getChop());
+		return new DiscardMove(getChop(true));
 	}
 	
 	private boolean dangerous(int player, int pos) {
@@ -146,12 +196,22 @@ public class JasonHanabiAI extends Player {
 	private boolean possiblyDangerous(int pos) {
 		for (Color color : ownHand.getCard(pos).getPColors()) {
 			for (Number number : ownHand.getCard(pos).getPNumbers()) {
-				if (fireworks.get(color) <= number.ordinal() && discard.get(color)[number.ordinal()] + 1 == number.amount) {
+				int totalAmount = mode.hard && (color == Color.MULTI || color == Color.RAINBOW) ? 1 : number.amount;
+				if (fireworks.get(color) <= number.ordinal() && discard.get(color)[number.ordinal()] + 1 == totalAmount) {
 					return true;
 				}
 			}
 		}
 		return false;
+	}
+
+	private int numPlays(int player) {
+		int numPlays = 0;
+		for (int i = 0; i < hands[player].size(); i++) {
+			if (hands[player].getMark(i).play()) numPlays++;
+		}
+		
+		return numPlays;
 	}
 	
 	private ArrayList<Integer> getPlayable(int player) {
@@ -174,11 +234,11 @@ public class JasonHanabiAI extends Player {
 	
 	private boolean possiblyPlayable(int player, int pos, Color color) {
 		CluedHand h = hands[player];
-		ArrayList<Number> pNumbers = h.getCard(pos).getPNumbers();
-		if (pNumbers.contains(fireworks.get(color))) {
-			return true;
-		} else if (h.getCard(pos).getPColors().contains(Color.MULTI) && pNumbers.contains(fireworks.get(Color.MULTI))) {
-			return true;
+		
+		for (Color c : h.getCard(pos).getPColors()) {
+			if (fireworks.get(c) < Number.VALUES.length && c.same(color) && h.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(c)])) {
+				return true;
+			}
 		}
 		return false;
 	}
@@ -193,25 +253,15 @@ public class JasonHanabiAI extends Player {
 		return false;
 	}
 	
-	private boolean possiblyPlayable(int player, int pos) {
-		CluedHand h = hands[player];
-		for (Color color : h.getCard(pos).getPColors()) {
-			if (h.getCard(pos).getPNumbers().contains(fireworks.get(color))) {
-				return true;
-			}
-		}
-		return false;
-	}
-
 	private boolean possiblyPlayable(int pos, Color color) {
 		for (Color c : ownHand.getCard(pos).getPColors()) {
-			if (c.same(color) && ownHand.getCard(pos).getPNumbers().contains(fireworks.get(color))) {
+			if (fireworks.get(c) < Number.VALUES.length && c.same(color) && ownHand.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(c)])) {
 				return true;
 			}
 		}
 		return false;
 	}
-
+	
 	private boolean possiblyPlayable(int pos, Number number) {
 		for (Color color : ownHand.getCard(pos).getPColors()) {
 			if (fireworks.get(color) == number.ordinal() && ownHand.getCard(pos).getPNumbers().contains(number)) {
@@ -221,45 +271,77 @@ public class JasonHanabiAI extends Player {
 		return false;
 	}
 	
-	private boolean possiblyPlayable(int pos) {
-		for (Color color : ownHand.getCard(pos).getPColors()) {
-			if (ownHand.getCard(pos).getPNumbers().contains(fireworks.get(color))) {
+	private boolean possiblyFinessable(int player, int pos, Color color) {
+		CluedHand h = hands[player];
+		for (Color c : h.getCard(pos).getPColors()) {
+			if (c.same(color) && fireworks.get(color) < 4 && h.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(color) + 1])) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean possiblyFinessable(int player, int pos, Number number) {
+		CluedHand h = hands[player];
+		for (Color color : h.getCard(pos).getPColors()) {
+			if (number.ordinal() == fireworks.get(color) + 1) {
 				return true;
 			}
 		}
 		return false;
 	}
 	
-	private Move checkChop() {
-		for (int i = 0; i < hands.length; i++) {
-			int chopPos = getChop(i);
-			
-			if (dangerous(i, chopPos)) {
-				return new ClueMove(i, hands[i].getNumber(chopPos));
+	private boolean possiblyFinessable(int pos, Color color) {
+		for (Color c : ownHand.getCard(pos).getPColors()) {
+			if (c.same(color) && fireworks.get(color) < 4 && ownHand.getCard(pos).getPNumbers().contains(Number.VALUES[fireworks.get(color) + 1])) {
+				return true;
 			}
 		}
-		return null;
+		return false;
+	}
+	
+	private boolean possiblyFinessable(int pos, Number number) {
+		for (Color color : ownHand.getCard(pos).getPColors()) {
+			if (fireworks.get(color) + 1 == number.ordinal() && ownHand.getCard(pos).getPNumbers().contains(number)) {
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	private int getChop(int player) {
-		for (int j = 0; j < hands[player].size(); j++) {
-			if (!hands[player].isClued(j)) {
-				return j;
+		CluedHand h = hands[player];
+		
+		for (int i = 0; i < h.size(); i++) {
+			if (h.getMark(i) == Marker.DISCARD) {
+				return i;
+			}
+		}
+		
+		for (int i = 0; i < h.size(); i++) {
+			if (!h.isClued(i) && h.getMark(i) != Marker.NOT_DISCARD) {
+				return i;
+			}
+		}
+		
+		for (int i = 0; i < h.size(); i++) {
+			if (h.getMark(i) != Marker.NOT_DISCARD) {
+				return i;
 			}
 		}
 		
 		return 0;
 	}
 	
-	private int getChop() {
-		for (int i = 0; i < ownHand.size(); i++) {
+	private int getChop(boolean considerDiscard) {
+		if (considerDiscard) for (int i = 0; i < ownHand.size(); i++) {
 			if (ownHand.getMark(i) == Marker.DISCARD) {
 				return i;
 			}
 		}
 		
 		for (int i = 0; i < ownHand.size(); i++) {
-			if (!ownHand.isClued(i)) {
+			if (!ownHand.isClued(i) && ownHand.getMark(i) != Marker.NOT_DISCARD) {
 				return i;
 			}
 		}
@@ -272,7 +354,7 @@ public class JasonHanabiAI extends Player {
 		
 		return 0;
 	}
-
+	
 	private ArrayList<Integer> getClued(int player, Color color) {
 		CluedHand hand = hands[player];
 		ArrayList<Integer> clued = new ArrayList<Integer>();
@@ -295,6 +377,304 @@ public class JasonHanabiAI extends Player {
 		return clued;
 	}
 	
+	private int playClueIndicates(int player, Color color) {
+		CluedHand h = hands[player];
+		
+		ArrayList<Integer> possible = new ArrayList<Integer>();
+		for (int i = h.size() - 1; i >= 0; i--) {
+			if (h.getColor(i).same(color) && possiblyPlayable(player, i, color) && !h.getMark(i).cluedPlay()) {
+				possible.add(i);
+			}
+		}
+		
+		if (possible.size() == 0) return -1;
+		
+		for (int i : possible) {
+			if (!h.isCClued(i) && h.isNClued(i)) {
+				return i;
+			}
+		}
+		
+		for (int i : possible) {
+			if (!h.isCClued(i)) {
+				return i;
+			}
+		}
+		
+		return possible.get(0);
+	}
+
+	private int playClueIndicates(int player, Number number) {
+		CluedHand h = hands[player];
+		
+		ArrayList<Integer> possible = new ArrayList<Integer>();
+		for (int i = h.size() - 1; i >= 0; i--) {
+			if (h.getNumber(i) == number && possiblyPlayable(player, i, number) && !h.getMark(i).cluedPlay()) {
+				possible.add(i);
+			}
+		}
+		
+		if (possible.size() == 0) return -1;
+		
+		for (int i : possible) {
+			if (!h.isNClued(i) && h.isCClued(i)) {
+				return i;
+			}
+		}
+		
+		for (int i : possible) {
+			if (!h.isNClued(i)) {
+				return i;
+			}
+		}
+		
+		return possible.get(0);
+	}
+	
+	private int playClueIndicates(Color color, ArrayList<Integer> pos) {
+		ArrayList<Integer> possible = new ArrayList<Integer>();
+		for (int i : pos) {
+			if (possiblyPlayable(i, color) && !ownHand.getMark(i).cluedPlay()) {
+				possible.add(i);
+			}
+		}
+		
+		if (possible.size() == 0) return -1;
+		
+		for (int i : possible) {
+			if (!ownHand.isCClued(i) && ownHand.isNClued(i)) {
+				return i;
+			}
+		}
+		
+		for (int i : possible) {
+			if (!ownHand.isCClued(i)) {
+				return i;
+			}
+		}
+		
+		return possible.get(0);
+	}
+	
+	private int playClueIndicates(Number number, ArrayList<Integer> pos) {
+		ArrayList<Integer> possible = new ArrayList<Integer>();
+		for (int i : pos) {
+			if (possiblyPlayable(i, number) && !ownHand.getMark(i).cluedPlay()) {
+				possible.add(i);
+			}
+		}
+		
+		if (possible.size() == 0) return -1;
+		
+		for (int i : possible) {
+			if (!ownHand.isNClued(i) && ownHand.isCClued(i)) {
+				return i;
+			}
+		}
+		
+		for (int i : possible) {
+			if (!ownHand.isNClued(i)) {
+				return i;
+			}
+		}
+		
+		return possible.get(0);
+	}
+	
+	private int finesseClueIndicates(int player, Color color) {
+		CluedHand h = hands[player];
+		
+		ArrayList<Integer> possible = new ArrayList<Integer>();
+		for (int i = h.size() - 1; i >= 0; i--) {
+			if (h.getColor(i).same(color) && possiblyFinessable(player, i, color) && !h.getMark(i).cluedPlay()) {
+				possible.add(i);
+			}
+		}
+		
+		if (possible.size() == 0) return -1;
+		
+		for (int i : possible) {
+			if (!h.isCClued(i) && h.isNClued(i)) {
+				return i;
+			}
+		}
+		
+		for (int i : possible) {
+			if (!h.isCClued(i)) {
+				return i;
+			}
+		}
+		
+		return possible.get(0);
+	}
+
+	private int finesseClueIndicates(int player, Number number) {
+		CluedHand h = hands[player];
+		
+		ArrayList<Integer> possible = new ArrayList<Integer>();
+		for (int i = h.size() - 1; i >= 0; i--) {
+			if (h.getNumber(i) == number && possiblyFinessable(player, i, number) && !h.getMark(i).cluedPlay()) {
+				possible.add(i);
+			}
+		}
+		
+		if (possible.size() == 0) return -1;
+		
+		for (int i : possible) {
+			if (!h.isNClued(i) && h.isCClued(i)) {
+				return i;
+			}
+		}
+		
+		for (int i : possible) {
+			if (!h.isNClued(i)) {
+				return i;
+			}
+		}
+		
+		return possible.get(0);
+	}
+	
+	private int finesseClueIndicates(Color color, ArrayList<Integer> pos) {
+		ArrayList<Integer> possible = new ArrayList<Integer>();
+		for (int i : pos) {
+			if (possiblyFinessable(i, color) && !ownHand.getMark(i).cluedPlay()) {
+				possible.add(i);
+			}
+		}
+		
+		if (possible.size() == 0) return -1;
+		
+		for (int i : possible) {
+			if (!ownHand.isCClued(i) && ownHand.isNClued(i)) {
+				return i;
+			}
+		}
+		
+		for (int i : possible) {
+			if (!ownHand.isCClued(i)) {
+				return i;
+			}
+		}
+		
+		return possible.get(0);
+	}
+	
+	private int finesseClueIndicates(Number number, ArrayList<Integer> pos) {
+		ArrayList<Integer> possible = new ArrayList<Integer>();
+		for (int i : pos) {
+			if (possiblyFinessable(i, number) && !ownHand.getMark(i).cluedPlay()) {
+				possible.add(i);
+			}
+		}
+		
+		if (possible.size() == 0) return -1;
+		
+		for (int i : possible) {
+			if (!ownHand.isNClued(i) && ownHand.isCClued(i)) {
+				return i;
+			}
+		}
+		
+		for (int i : possible) {
+			if (!ownHand.isNClued(i)) {
+				return i;
+			}
+		}
+		
+		return possible.get(0);
+	}
+	
+	private int finessedPos(int player, Color color, Number number) {
+		CluedHand h = hands[player];
+		
+		ArrayList<Integer> possible = new ArrayList<Integer>();
+		for (int p = h.size() - 1; p >= 0; p--) {
+			if (h.getCard(p).possible(color, number)) {
+				possible.add(p);
+			}
+		}
+		
+		if (possible.size() == 0) return -1;
+		
+		for (int p : possible) {
+			if (h.isCClued(p) && h.isNClued(p)) return p;
+		}
+		
+		for (int p : possible) {
+			if (h.isClued(p)) return p;
+		}
+		
+		return possible.get(0);
+	}
+	
+	private int finessedPos(Color color, Number number) {
+		ArrayList<Integer> possible = new ArrayList<Integer>();
+		for (int p = ownHand.size() - 1; p >= 0; p--) {
+			if (ownHand.getCard(p).possible(color, number)) {
+				possible.add(p);
+			}
+		}
+		
+		if (possible.size() == 0) return -1;
+		
+		for (int p : possible) {
+			if (ownHand.isCClued(p) && ownHand.isNClued(p)) return p;
+		}
+		
+		for (int p : possible) {
+			if (ownHand.isClued(p)) return p;
+		}
+		
+		return possible.get(0);
+	}
+	
+	private void findFinessed(Color fColor, Number fNumber, int fromPlayer, int player) {
+		if (fromPlayer < player) {
+			// The player being finessed can't be this player
+			for (int f = fromPlayer + 1; f < player; f++) {
+				CluedHand fh = hands[f];
+				int fp = finessedPos(f, fColor, fNumber);
+				
+				if (fh.getColor(fp) == fColor && fh.getNumber(fp) == fNumber) {
+					fh.mark(Marker.FINESSED, fp);
+					break;
+				}
+			}
+		} else {
+			boolean found = false;
+			
+			for (int f = fromPlayer + 1; f < hands.length; f++) {
+				CluedHand fh = hands[f];
+				int fp = finessedPos(f, fColor, fNumber);
+				if (fp == -1) continue;
+				
+				if (fh.getColor(fp) == fColor && fh.getNumber(fp) == fNumber) {
+					fh.mark(Marker.FINESSED, fp);
+					found = true;
+					break;
+				}
+			}
+			
+			if (!found) for (int f = 0; f < player; f++) {
+				CluedHand fh = hands[f];
+				int fp = finessedPos(f, fColor, fNumber);
+				if (fp == -1) continue;
+				
+				if (fh.getColor(fp) == fColor && fh.getNumber(fp) == fNumber) {
+					fh.mark(Marker.FINESSED, fp);
+					found = true;
+					break;
+				}
+			}
+			
+			if (!found) {
+				int fp = finessedPos(fColor, fNumber);
+				if (fp != -1) ownHand.mark(Marker.FINESSED, fp);
+			}
+		}
+	}
+		
 	@Override
 	public void play(int player, int pos) {
 		CluedCard c = hands[player].take(pos);
@@ -309,8 +689,10 @@ public class JasonHanabiAI extends Player {
 			discard.get(c.color)[c.number.ordinal()]++;
 			lives--;
 		}
+		
+		willBePlayed.get(c.color)[c.number.ordinal()] = true;
 	}
-
+	
 	@Override
 	public void play(int pos, Card c) {
 		ownHand.take(pos);
@@ -326,6 +708,8 @@ public class JasonHanabiAI extends Player {
 			lives--;
 		}
 		
+		willBePlayed.get(c.color)[c.number.ordinal()] = true;
+		
 		seeCard(c);
 	}
 	
@@ -336,7 +720,7 @@ public class JasonHanabiAI extends Player {
 		discard.get(c.color)[c.number.ordinal()]++;
 		clues++;
 	}
-
+	
 	@Override
 	public void discard(int pos, Card c) {
 		ownHand.take(pos);
@@ -346,7 +730,7 @@ public class JasonHanabiAI extends Player {
 		
 		seeCard(c);
 	}
-
+	
 	@Override
 	public void clue(int fromPlayer, int player, Color color) {
 		clues--;
@@ -354,38 +738,52 @@ public class JasonHanabiAI extends Player {
 		// Clue to other player
 		CluedHand hand = hands[player];
 		
-		// Calculate which cards are clued
-		ArrayList<Integer> clued = getClued(player, color);
-		for (int p : clued) {
-			if (!hand.isCClued(p) && hand.getMark(p) != Marker.CLUED_PLAY
-					&& possiblyPlayable(player, p, color)) {
-				hand.mark(Marker.CLUED_PLAY, p);
-				willBePlayed.get(hand.getColor(p))[hand.getNumber(p).ordinal()] = true;
-				break;
+		int pos = playClueIndicates(player, color);
+		if (pos == -1) {
+			// If nothing is indicated to be played, it must be a finesse
+			if (FINESSE) {
+				// Mark finessed card for the hand receiving the clue
+				pos = finesseClueIndicates(player, color);
+				hand.mark(Marker.FINESSED, pos);
+				
+				Color fColor = hand.getColor(pos);
+				Number fNumber = Number.VALUES[hand.getNumber(pos).ordinal() - 1];
+				willBePlayed.get(fColor)[fNumber.ordinal()] = true;
+				willBePlayed.get(fColor)[fNumber.ordinal() + 1] = true;
+				
+				// Mark the finessed card for the hand being finessed
+				findFinessed(fColor, fNumber, fromPlayer, player);
 			}
-			
+		} else {
+			// Mark the clued card to be played
+			hand.mark(Marker.CLUED_PLAY, pos);
+			willBePlayed.get(hand.getColor(pos))[hand.getNumber(pos).ordinal()] = true;
 		}
 		
 		hand.clue(color);
 	}
-
+	
 	@Override
 	public void clue(int fromPlayer, Color color, ArrayList<Integer> pos) {
 		clues--;
 		
 		// Clue to this player
-		for (int p : pos) {
-			if (!ownHand.isCClued(p) && ownHand.getMark(p) != Marker.CLUED_PLAY
-					&& possiblyPlayable(p, color)) {
-				ownHand.mark(Marker.CLUED_PLAY, p);
-				break;
+		int p = playClueIndicates(color, pos);
+		if (p == -1) {
+			// If nothing is indicated to be played, it must be a finesse
+			if (FINESSE) {
+				// Mark own hand as finessed
+				p = finesseClueIndicates(color, pos);
+				ownHand.mark(Marker.FINESSED, p);
 			}
-			
+		} else {
+			// Mark the clued card to be played
+			ownHand.mark(Marker.CLUED_PLAY, p);
 		}
 		
 		ownHand.clue(color, pos);
 	}
-
+	
 	@Override
 	public void clue(int fromPlayer, int player, Number number) {
 		clues--;
@@ -395,19 +793,38 @@ public class JasonHanabiAI extends Player {
 		
 		// Calculate which cards are clued
 		ArrayList<Integer> clued = getClued(player, number);
-		for (int p : clued) {
-			if (!hand.isNClued(p) && hand.getMark(p) != Marker.CLUED_PLAY
-					&& possiblyPlayable(player, p, number)) {
-				hand.mark(Marker.CLUED_PLAY, p);
-				willBePlayed.get(hand.getColor(p))[hand.getNumber(p).ordinal()] = true;
-				break;
+		
+		// Check if it's a discard clue
+		if (CLUE_DISCARD) if (clued.size() == 1 && clues == 0) {
+			int last = clued.get(0);
+			if (!hand.isNClued(last) && getChop(player) == last && dangerous(player, last)) {
+				hand.mark(Marker.NOT_DISCARD, last);
+				
+				hand.clue(number);
+				return;
 			}
-			if (!hand.isNClued(p) && possiblyDangerous(p)) {
-				hand.mark(Marker.NOT_DISCARD, p);
-				willBePlayed.get(hand.getColor(p))[hand.getNumber(p).ordinal()] = true;
-				break;
+		}
+		
+		int pos = playClueIndicates(player, number);
+		if (pos == -1) {
+			// If nothing is indicated to be played, it must be a finesse
+			if (FINESSE) {
+				// Mark finessed card for the hand receiving the clue
+				pos = finesseClueIndicates(player, number);
+				hand.mark(Marker.FINESSED, pos);
+				
+				Color fColor = hand.getColor(pos);
+				Number fNumber = Number.VALUES[hand.getNumber(pos).ordinal() - 1];
+				willBePlayed.get(fColor)[fNumber.ordinal()] = true;
+				willBePlayed.get(fColor)[fNumber.ordinal() + 1] = true;
+				
+				// Mark the finessed card for the hand being finessed
+				findFinessed(fColor, fNumber, fromPlayer, player);
 			}
-			
+		} else {
+			// Mark the clued card to be played
+			hand.mark(Marker.CLUED_PLAY, pos);
+			willBePlayed.get(hand.getColor(pos))[hand.getNumber(pos).ordinal()] = true;
 		}
 		
 		hand.clue(number);
@@ -418,13 +835,29 @@ public class JasonHanabiAI extends Player {
 		clues--;
 		
 		// Clue to this player
-		for (int p : pos) {
-			if (!ownHand.isNClued(p) && ownHand.getMark(p) != Marker.CLUED_PLAY
-					&& possiblyPlayable(p, number)) {
-				ownHand.mark(Marker.CLUED_PLAY, p);
-				break;
+		
+		// Check if it's a discard clue
+		if (CLUE_DISCARD) if (pos.size() == 1 && clues == 0) {
+			int last = pos.get(0);
+			if (!ownHand.isNClued(last) && getChop(false) == last && possiblyDangerous(last)) {
+				ownHand.mark(Marker.NOT_DISCARD, last);
+				
+				ownHand.clue(number, pos);
+				return;
 			}
-			
+		}
+		
+		// Calculate which card is indicated, and mark it
+		int p = playClueIndicates(number, pos);
+		if (p == -1) {
+			if (FINESSE) {
+				// Mark own hand as finessed
+				p = finesseClueIndicates(number, pos);
+				ownHand.mark(Marker.FINESSED, p);
+			}
+		} else {
+			// Mark the clued card to be played
+			ownHand.mark(Marker.CLUED_PLAY, p);
 		}
 		
 		ownHand.clue(number, pos);
@@ -444,34 +877,23 @@ public class JasonHanabiAI extends Player {
 
 	private void seeCard(Card c) {
 		cardsSeen.get(c.color)[c.number.ordinal()]++;
-		if (cardsSeen.get(c.color)[c.number.ordinal()] == c.number.amount) {
+		int totalAmount = mode.hard && (c.color == Color.MULTI || c.color == Color.RAINBOW) ? 1 : c.number.amount;
+		if (cardsSeen.get(c.color)[c.number.ordinal()] == totalAmount) {
 			ownHand.antiClueAll(c.color, c.number);
 		}
 	}
 	
-	public boolean check(Hand[] h, int playerNum, HashMap<Color, Integer> fireworks) {
-		for (int i = 0; i < hands.length; i++) {
-			int j = (i + playerNum + 1) % h.length;
+	class PlayerComp implements Comparator<Integer> {
+		@Override
+		public int compare(Integer a, Integer b) {
+			int aPlays = numPlays(a);
+			int bPlays = numPlays(b);
 			
-			for (int c = 0; c < h[j].size(); c++) {
-				if (h[j].getColor(c) != hands[i].getColor(c)) {
-					System.out.println("Hand error: " + h[j] + " " + hands[i]);
-					return false;
-				}
-				if (h[j].getNumber(c) != hands[i].getNumber(c)) {
-					System.out.println("Hand error: " + h[j] + " " + hands[i]);
-					return false;
-				}
-			}
+			if (aPlays < bPlays) return -1;
+			if (aPlays > bPlays) return 1;
+			if (a < b) return -1;
+			if (a > b) return 1;
+			return 0;
 		}
-		
-		for (Color color : mode.colors) {
-			if (fireworks.get(color) != this.fireworks.get(color)) {
-				System.out.println("Firework error: " + color);
-				return false;
-			}
-		}
-		
-		return true;
 	}
 }

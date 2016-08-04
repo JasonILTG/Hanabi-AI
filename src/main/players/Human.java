@@ -228,9 +228,4 @@ public class Human extends Player {
 	public void message(String message) {
 		System.out.println("[" + System.currentTimeMillis() + "] " + message);
 	}
-	
-	@Override
-	public boolean check(Hand[] h, int playerNum, HashMap<Color, Integer> fireworks) {
-		return true;
-	}
 }

@@ -6,7 +6,7 @@ package main.enums;
 public enum Number implements Comparable<Number> {
 	ONE(3), TWO(2), THREE(2), FOUR(2), FIVE(1);
 	
-	public static final Number[] VALUES = { ONE, TWO, THREE, FOUR, FIVE };
+	public static final Number[] VALUES = Number.values();
 	
 	public final int amount;
 	
