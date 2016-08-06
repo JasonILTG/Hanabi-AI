@@ -1,135 +1,68 @@
 package main.players;
 
-import java.util.ArrayList;
-
-import main.enums.Color;
-import main.enums.GameMode;
-import main.enums.Number;
+import main.event.Event;
+import main.event.EventBus;
+import main.event.EventListener;
+import main.game.HanabiGame;
 import main.moves.Move;
-import main.parts.Card;
 import main.parts.Hand;
 
 /**
  * Abstract class for players (AIs or humans).
  */
-public abstract class Player {
+public abstract class Player
+		implements EventListener
+{
 	private String name;
+	protected HanabiGame game;
+	protected Hand hand;
 	
 	/**
 	 * Constructor.
-	 * 
+	 *
 	 * @param name The player's name
 	 */
-	public Player(String name) {
+	public Player(String name, HanabiGame game)
+	{
 		this.name = name;
+		this.game = game;
+		// Register this as an event listener
+		Class<? extends Event>[] eventClasses = getListenableEventClasses();
+		if (eventClasses != null) {
+			for (Class<? extends Event> eventClass : eventClasses) {
+				EventBus.addListener(eventClass, this);
+			}
+		}
 	}
 	
 	/**
-	 * Initializes the player with the hands of the other players and the game mode.
-	 * 
-	 * IMPORTANT: Indexing for players will be 0 for the player immediately after
-	 * this player, and then 1, 2, and so on.  This player will be indexed as -1.
-	 * 
-	 * @param hands The hands of the other players, in playing order after this player
-	 * @param mode The game mode
+	 * @param hand The cards this player has
 	 */
-	public abstract void init(Hand[] hands, GameMode mode);
+	public void setHand(Hand hand)
+	{
+		this.hand = hand;
+	}
 	
 	/**
-	 * Calculates and returns the move this player makes.
-	 * 
-	 * @return The move the player makes.
+	 * @return The hand this player is holding
 	 */
-	public abstract Move move();
+	public Hand getHand()
+	{
+		return hand;
+	}
+	
+	public abstract Move getNextMove();
 	
 	/**
-	 * Informs this player of a play.
-	 * 
-	 * @param player The position of the player who played
-	 * @param pos The position of the card played in the player's hand
-	 */
-	public abstract void play(int player, int pos);
-	
-	/**
-	 * Informs this player of their own play.
-	 * 
-	 * @param pos The position of the card played
-	 */
-	public abstract void play(int pos, Card c);
-	
-	/**
-	 * Informs this player of a discard.
-	 * 
-	 * @param player The position of the player who discarded
-	 * @param pos The position of the card discarded in the player's hand
-	 */
-	public abstract void discard(int player, int pos);
-	
-	/**
-	 * Informs this player of their own discard.
-	 * 
-	 * @param pos The position of the card discarded
-	 */
-	public abstract void discard(int pos, Card c);
-	
-	/**
-	 * Informs this player of a color clue.
-	 * 
-	 * @param fromPlayer The position of the player who gave the clue
-	 * @param player The position of the player who received the clue
-	 * @param color The color clued
-	 */
-	public abstract void clue(int fromPlayer, int player, Color color);
-	
-	/**
-	 * Informs this player of a  color clue to this player.
-	 * 
-	 * @param fromPlayer The position of the player who gave the clue
-	 * @param color The color clued
-	 * @param pos The positions clued
-	 */
-	public abstract void clue(int fromPlayer, Color color, ArrayList<Integer> pos);
-	
-	/**
-	 * Informs this player of a number clue.
-	 * 
-	 * @param fromPlayer The position of the player who gave the clue
-	 * @param player The position of the player who received the clue
-	 * @param number The number clued
-	 */
-	public abstract void clue(int fromPlayer, int player, Number number);
-	
-	/**
-	 * Informs this player of a number clue to this player.
-	 * 
-	 * @param fromPlayer The position of the player who gave the clue
-	 * @param number The number clued
-	 * @param pos The positions clued
-	 */
-	public abstract void clue(int fromPlayer, Number number, ArrayList<Integer> pos);
-	
-	/**
-	 * Informs this player of another player's draw.
-	 * 
-	 * @param player The player
-	 * @param c The card
-	 */
-	public abstract void draw(int player, Card c);
-	
-	/**
-	 * Informs this player of their own draw.
-	 */
-	public abstract void draw();
-	
-	/**
-	 * Sends a message to this player.  This is mostly used for human players.
-	 * 
-	 * @param message The message sent
+	 * @return A list of all the event classes this object can listen to
 	 */
 	public void message(String message) {}
+
+	protected abstract Class<? extends Event>[] getListenableEventClasses();
 	
 	@Override
-	public String toString() {
+	public String toString()
+	{
 		return name;
 	}
 }
