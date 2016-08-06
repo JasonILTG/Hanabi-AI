@@ -190,6 +190,8 @@ public class HanabiGame {
 		}
 		println("--------------------------------------------------------------");
 		println();
+		println("Enter anything to continue.");
+		if (pause) in.nextLine();
 	}
 	
 	/**
@@ -240,7 +242,6 @@ public class HanabiGame {
 			lives--;
 			if (lives == 0 && logging) {
 				System.out.println(Color.RED.ansi() + "FAIL" + Color.NONE.ansi());
-				if (pause) in.nextLine();
 			}
 			discard.add(c);
 		} else {
@@ -431,8 +432,6 @@ public class HanabiGame {
 		
 		if (logging) {
 			println(message);
-			println("Enter anything to continue.");
-			if (pause) in.nextLine();
 		}
 	}
 	
@@ -447,8 +446,6 @@ public class HanabiGame {
 		
 		if (logging) {
 			println("[" + players[to] + "] " + message);
-			println("Enter anything to continue.");
-			if (pause) in.nextLine();
 		}
 	}
 	
@@ -464,8 +461,6 @@ public class HanabiGame {
 		
 		if (logging) {
 			println(message);
-			println("Enter anything to continue.");
-			if (pause) in.nextLine();
 		}
 	}
 	
@@ -498,48 +493,50 @@ public class HanabiGame {
 		PrintStream out = System.out;
 		
 		Player[] players = new Player[5];
-		players[0] = new JasonHanabiAI("Jackie");
-		players[1] = new JasonHanabiAI("Jason");
-		players[2] = new JasonHanabiAI("Milan");
-		players[3] = new JasonHanabiAI("Maya");
-		players[4] = new JasonHanabiAI("Pesto");
+		players[0] = new JasonHanabiAI("Alice");
+		players[1] = new JasonHanabiAI("Bob");
+		players[2] = new JasonHanabiAI("Charlie");
+		players[3] = new JasonHanabiAI("Dave");
+		players[4] = new JasonHanabiAI("Eve");
 		
-		for (int p = 4; p <= 4; p++) {
-			HanabiGame g = new HanabiGame(GameMode.NORMAL, Arrays.copyOfRange(players, 0, p), false, false);
-			
-			int MAX = 10000;
-			
-			int num = 0;
-			int score = 0;
-			double total = 0;
-			int[] scores = new int[31];
-			while(num != MAX) {
-				score = g.start();
-				scores[score]++;
-				total += score;
-				g.reset();
-				num++;
+		for (GameMode mode : GameMode.values()) {
+			for (int p = 4; p <= 4; p++) {
+				HanabiGame g = new HanabiGame(mode, Arrays.copyOfRange(players, 0, p), true, true);
 				
-				if (num % (MAX / 100) == 0) {
-					System.out.print(".");
-				}
-				/*if (num % 10000 == 0) {
-					System.out.println("Score distribution at " + num + ": ");
-					for (int i = 0; i < scores.length; i++) {
-						System.out.println(i + ": " + scores[i]);
+				int MAX = 9000;
+				
+				int num = 0;
+				int score = 0;
+				double total = 0;
+				int[] scores = new int[31];
+				while(num != MAX) {
+					score = g.start();
+					scores[score]++;
+					total += score;
+					g.reset();
+					num++;
+					
+					if (num % (MAX / 100) == 0) {
+						System.out.print(".");
 					}
-					System.out.println("Average over " + num + " games: " + (total / num));
-				}*/
+					/*if (num % 10000 == 0) {
+						System.out.println("Score distribution at " + num + ": ");
+						for (int i = 0; i < scores.length; i++) {
+							System.out.println(i + ": " + scores[i]);
+						}
+						System.out.println("Average over " + num + " games: " + (total / num));
+					}*/
+				}
+				
+				out.println();
+				out.println("Final score distribution (" + p + " players, " + mode + "): ");
+				for (int i = 0; i < scores.length; i++) {
+					out.println(i + ": " + scores[i]);
+				}
+				out.println("Average over " + num + " games: " + total / num);
+				
+				//out.close();
 			}
-			
-			out.println();
-			out.println("Final score distribution (" + p + " players): ");
-			for (int i = 0; i < scores.length; i++) {
-				out.println(i + ": " + scores[i]);
-			}
-			out.println("Average over " + num + " games: " + total / num);
-			
-			//out.close();
 		}
 	}
 }

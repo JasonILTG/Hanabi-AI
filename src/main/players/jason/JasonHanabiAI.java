@@ -19,7 +19,7 @@ public class JasonHanabiAI extends Player {
 	private static final Random rand = new Random();
 	
 	private static final boolean CLUE_DISCARD = false;
-	private static final boolean FINESSE = false;
+	private static final boolean FINESSE = true;
 	
 	private GameMode mode;
 	private int clues;
