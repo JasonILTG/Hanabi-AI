@@ -4,7 +4,7 @@ public class Card
 {
 	public enum Color
 	{
-		RED, GREEN, YELLOW, BLUE, WHITE, RAINBOW
+		RED, GREEN, YELLOW, BLUE, WHITE, /** For the mode where hinting a color does not hint rainbow */RAINBOW, /** For the game mode where hinting a color also hints rainbow */MULTI
 	}
 	
 	public enum Number
