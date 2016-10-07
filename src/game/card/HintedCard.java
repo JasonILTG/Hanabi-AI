@@ -1,5 +1,8 @@
 package game.card;
 
+/**
+ * A wrapper for Card that overlays the card with hints. The hints are processed automatically through the two applyHint methods.
+ */
 public class HintedCard
 {
 	public Card card;
