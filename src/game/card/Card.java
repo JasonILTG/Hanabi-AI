@@ -4,7 +4,8 @@ public class Card
 {
 	public enum Color
 	{
-		RED, YELLOW, GREEN, BLUE, WHITE, /** For the mode where hinting a color does not hint rainbow */RAINBOW, /** For the game mode where hinting a color also hints rainbow */MULTI
+		RED, YELLOW, GREEN, BLUE, WHITE, /** For the mode where hinting a color does not hint rainbow */RAINBOW, /** For the game mode where hinting a color also hints rainbow */MULTI;
+		public static final Color[] MAIN_COLORS = { RED, YELLOW, GREEN, BLUE, WHITE };
 	}
 	
 	public enum Number
@@ -20,5 +21,21 @@ public class Card
 	{
 		this.color = color;
 		this.number = number;
+	}
+	
+	@Override
+	public boolean equals(Object obj)
+	{
+		// Compare by color and number
+		if (obj == this) {
+			return true;
+		}
+		else if (!(obj instanceof Card)) {
+			return false;
+		}
+		else {
+			Card other = (Card) obj;
+			return color == other.color && number == other.number;
+		}
 	}
 }

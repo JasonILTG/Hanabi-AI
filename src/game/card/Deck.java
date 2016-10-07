@@ -17,6 +17,11 @@ public class Deck
 		this.settings = settings;
 	}
 	
+	public void setGameSettings(GameSettings settings)
+	{
+		this.settings = settings;
+	}
+	
 	/**
 	 * Initializes the deck according to the game settings specifications given.
 	 * <p>
@@ -27,8 +32,7 @@ public class Deck
 		cards = new LinkedList<>();
 		
 		// Add the main deck of cards
-		Card.Color[] mainColors = { Card.Color.RED, Card.Color.YELLOW, Card.Color.GREEN, Card.Color.BLUE, Card.Color.WHITE };
-		for (Card.Color c : mainColors) {
+		for (Card.Color c : Card.Color.MAIN_COLORS) {
 			for (int numberIndex = 0; numberIndex < 5; numberIndex++) {
 				// Add the number of cards as indicated
 				for (int j = 0; j < Config.CARD_COUNT[numberIndex]; j++) {
