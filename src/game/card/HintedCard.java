@@ -7,10 +7,15 @@ public class HintedCard
 {
 	public Card card;
 	
-	/** The currently known hint for the card's color */
+	/** The currently known hint for the card's color; null for unknown */
 	private Card.Color hintedColor;
-	/** The currently known hint for the card's number */
+	/** The currently known hint for the card's number; null for unknown */
 	private Card.Number hintedNumber;
+	
+	public HintedCard(Card card)
+	{
+		this(card, null, null);
+	}
 	
 	public HintedCard(Card card, Card.Color hintedColor, Card.Number hintedNumber)
 	{
