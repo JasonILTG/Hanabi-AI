@@ -1,6 +1,7 @@
 package game.player.move;
 
 public class PlayMove
+		extends PlayerMove
 {
 	public final int index;
 	

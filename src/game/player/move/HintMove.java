@@ -3,6 +3,7 @@ package game.player.move;
 import game.logic.HanabiGame;
 
 public abstract class HintMove
+		extends PlayerMove
 {
 	public final HanabiGame.PlayerIdentifier targetIdentifier;
 	

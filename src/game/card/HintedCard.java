@@ -59,24 +59,15 @@ public class HintedCard
 		return hintedNumber;
 	}
 	
-	private class Immutable
+	/**
+	 * A class used to protect the content of the HintedCard.
+	 */
+	private static class Protected
 			extends HintedCard
 	{
-		public Immutable(Card card, Card.Color hintedColor, Card.Number hintedNumber)
+		public Protected(Card card, Card.Color hintedColor, Card.Number hintedNumber)
 		{
 			super(card, hintedColor, hintedNumber);
-		}
-		
-		@Override
-		public void applyHint(Card.Color hint)
-		{
-			return;
-		}
-		
-		@Override
-		public void applyHint(Card.Number hint)
-		{
-			return;
 		}
 	}
 	
@@ -86,8 +77,8 @@ public class HintedCard
 	 * @param hideCard Whether to hide the card wrapped or not
 	 * @return A precessed version of the hint wrapper that disables hinting and possible has the actual card hidden
 	 */
-	public HintedCard getProtectedWrapper(boolean hideCard)
+	public HintedCard getProtected(boolean hideCard)
 	{
-		return new Immutable(hideCard ? null : card, hintedColor, hintedNumber);
+		return new Protected(hideCard ? null : card, hintedColor, hintedNumber);
 	}
 }

@@ -2,6 +2,7 @@ package game.player;
 
 import game.logic.HanabiGame;
 import game.logic.event.AbstractEvent;
+import game.player.move.PlayerMove;
 
 public abstract class AbstractPlayer
 {
@@ -15,5 +16,17 @@ public abstract class AbstractPlayer
 		this.name = name;
 	}
 	
-	abstract void onEvent(AbstractEvent evnet);
+	/**
+	 * Notify the player that something has happened in the game.
+	 *
+	 * @param event The event that took place
+	 */
+	abstract void onEvent(AbstractEvent event);
+	
+	/**
+	 * Request that the player make a move.
+	 *
+	 * @return The move that this player wants to make
+	 */
+	abstract PlayerMove getNextMove();
 }

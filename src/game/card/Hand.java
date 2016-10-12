@@ -10,7 +10,7 @@ import java.util.List;
  */
 public class Hand
 {
-	private List<HintedCard> cards;
+	protected List<HintedCard> cards;
 	
 	public Hand()
 	{
@@ -22,12 +22,12 @@ public class Hand
 		cards.add(0, new HintedCard(c));
 	}
 	
-	public List<HintedCard> viewCards()
+	public List<HintedCard> getCards()
 	{
 		return cards;
 	}
 	
-	public HintedCard viewCard(int pos)
+	public HintedCard getCard(int pos)
 	{
 		return cards.get(pos);
 	}
@@ -35,5 +35,24 @@ public class Hand
 	public HintedCard removeCard(int pos)
 	{
 		return cards.remove(pos);
+	}
+	
+	/**
+	 * A class used to protect the content of the Hand.
+	 */
+	private static class ProtectedHand
+			extends Hand
+	{
+		private ProtectedHand(List<HintedCard> cards, boolean hideCard)
+		{
+			for (HintedCard c : cards) {
+				this.cards.add(c.getProtected(hideCard));
+			}
+		}
+	}
+	
+	public Hand getProtected(boolean hideCard)
+	{
+		return new ProtectedHand(cards, hideCard);
 	}
 }

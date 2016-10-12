@@ -12,6 +12,14 @@ public class Card
 	{
 		ONE, TWO, THREE, FOUR, FIVE;
 		public static final Number[] VALUES = values();
+		
+		/** The value of this card, which is one of 1, 2, 3, 4, and 5 */
+		public final int value;
+		
+		Number()
+		{
+			value = ordinal() + 1;
+		}
 	}
 	
 	public final Color color;
@@ -37,5 +45,11 @@ public class Card
 			Card other = (Card) obj;
 			return color == other.color && number == other.number;
 		}
+	}
+	
+	@Override
+	public String toString()
+	{
+		return color + " " + number.value;
 	}
 }
