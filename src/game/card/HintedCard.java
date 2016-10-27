@@ -1,7 +1,7 @@
 package game.card;
 
 /**
- * A wrapper for Card that overlays the card with hints. The hints are processed automatically through the two applyHint methods.
+ * A wrapper for Card that overlays the card with hints. The hints are processed automatically through the two applyClue methods.
  */
 public class HintedCard
 {
@@ -24,27 +24,32 @@ public class HintedCard
 		this.hintedNumber = hintedNumber;
 	}
 	
-	public void applyHint(Card.Color hint)
+	public void applyClue(Card.Color hint)
 	{
 		// Special case for multi mode
-		if (card.color == Card.Color.MULTI) {
-			if (hintedColor == null || hintedColor == hint) {
+		if (card.color == Card.Color.MULTI)
+		{
+			if (hintedColor == null || hintedColor == hint)
+			{
 				hintedColor = hint;
 			}
-			else {
+			else
+			{
 				hintedColor = Card.Color.MULTI;
 			}
 		}
 		
 		// General case
-		if (card.color == hint) {
+		if (card.color == hint)
+		{
 			hintedColor = hint;
 		}
 	}
 	
-	public void applyHint(Card.Number hint)
+	public void applyClue(Card.Number hint)
 	{
-		if (card.number == hint) {
+		if (card.number == hint)
+		{
 			hintedNumber = hint;
 		}
 	}

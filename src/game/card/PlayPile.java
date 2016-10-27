@@ -23,15 +23,18 @@ public class PlayPile
 	public void initialize()
 	{
 		// Add universal colors
-		for (Card.Color c : Card.Color.MAIN_COLORS) {
+		for (Card.Color c : Card.Color.MAIN_COLORS)
+		{
 			scoreMap.put(c, 0);
 		}
 		
 		// Add additional colors based on the game difficulty
-		if (settings.isMulti) {
+		if (settings.isMulti)
+		{
 			scoreMap.put(Card.Color.MULTI, 0);
 		}
-		else if (settings.isRainbow) {
+		else if (settings.isRainbow)
+		{
 			scoreMap.put(Card.Color.RAINBOW, 0);
 		}
 	}
@@ -46,7 +49,8 @@ public class PlayPile
 			throws RuntimeException
 	{
 		// Check if the move is allowed.
-		if (!canPlay(c)) {
+		if (!canPlay(c))
+		{
 			throw new RuntimeException("Cannot play card: " + c + " onto the played cards pile.");
 		}
 		
@@ -69,7 +73,8 @@ public class PlayPile
 	{
 		int totalScore = 0;
 		
-		for (Map.Entry<Card.Color, Integer> entry : scoreMap.entrySet()) {
+		for (Map.Entry<Card.Color, Integer> entry : scoreMap.entrySet())
+		{
 			totalScore += entry.getValue();
 		}
 		

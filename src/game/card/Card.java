@@ -35,13 +35,16 @@ public class Card
 	public boolean equals(Object obj)
 	{
 		// Compare by color and number
-		if (obj == this) {
+		if (obj == this)
+		{
 			return true;
 		}
-		else if (!(obj instanceof Card)) {
+		else if (!(obj instanceof Card))
+		{
 			return false;
 		}
-		else {
+		else
+		{
 			Card other = (Card) obj;
 			return color == other.color && number == other.number;
 		}
