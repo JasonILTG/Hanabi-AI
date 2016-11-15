@@ -8,26 +8,43 @@ import java.util.Map;
 public class DiscardPile
 {
 	private List<Card> discards;
+	private Map<Card, Integer> discardMap;
 	
 	public DiscardPile()
 	{
 		discards = new LinkedList<>();
+		discardMap = new HashMap<>();
 	}
 	
 	public void addCard(Card c)
 	{
 		discards.add(c);
+
+		if (!discardMap.containsKey(c))
+		{
+			discardMap.put(c, 1);
+		}
+		else
+		{
+			discardMap.put(c, discardMap.get(c) + 1);
+		}
 	}
 	
 	public Map<Card, Integer> getDiscardCount()
 	{
-		Map<Card, Integer> discardMap = new HashMap<>();
+		return discardMap;
+	}
+
+	/**
+	 * Re-evaluates the discard map to ensure that the map is indeed correct.
+	 */
+	public void recalculateDiscardMap()
+	{
+		discardMap.clear();
 		
-		// Go through the cards and add to the discard count
 		for (Card c : discards)
 		{
-			// Make sure there is an entry
-			if (discardMap.get(c) == null)
+			if (!discardMap.containsKey(c))
 			{
 				discardMap.put(c, 1);
 			}
@@ -36,7 +53,5 @@ public class DiscardPile
 				discardMap.put(c, discardMap.get(c) + 1);
 			}
 		}
-		
-		return discardMap;
 	}
 }

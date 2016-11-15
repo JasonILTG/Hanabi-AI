@@ -45,7 +45,8 @@ public class Hand
 	{
 		private ProtectedHand(List<HintedCard> cards, boolean hideCard)
 		{
-			for (HintedCard c : cards) {
+			for (HintedCard c : cards)
+			{
 				this.cards.add(c.getProtected(hideCard));
 			}
 		}
@@ -54,5 +55,21 @@ public class Hand
 	public Hand getProtected(boolean hideCard)
 	{
 		return new ProtectedHand(cards, hideCard);
+	}
+	
+	public void applyClue(Card.Color clue)
+	{
+		for (HintedCard c : cards)
+		{
+			c.applyClue(clue);
+		}
+	}
+	
+	public void applyClue(Card.Number clue)
+	{
+		for (HintedCard c : cards)
+		{
+			c.applyClue(clue);
+		}
 	}
 }

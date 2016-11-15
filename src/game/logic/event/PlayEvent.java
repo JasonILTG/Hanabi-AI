@@ -1,15 +1,16 @@
 package game.logic.event;
 
-import game.card.Card;
+import game.card.HintedCard;
+import game.logic.HanabiGame;
 import game.player.AbstractPlayer;
 
 public class PlayEvent
-		extends AbstractEvent
+		extends AbstractGameEvent
 {
-	public final Card cardPlayed;
+	public final HintedCard cardPlayed;
 	public final boolean success;
 	
-	public PlayEvent(AbstractPlayer actor, Card cardPlayed, boolean success)
+	public PlayEvent(AbstractPlayer actor, HintedCard cardPlayed, boolean success)
 	{
 		super(actor);
 		this.cardPlayed = cardPlayed;

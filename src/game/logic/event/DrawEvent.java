@@ -1,10 +1,11 @@
 package game.logic.event;
 
 import game.card.Card;
+import game.logic.HanabiGame;
 import game.player.AbstractPlayer;
 
 public class DrawEvent
-		extends AbstractEvent
+		extends AbstractGameEvent
 {
 	public final Card cardDrawn;
 	

@@ -1,16 +1,17 @@
 package game.logic.event;
 
 import game.logic.HanabiGame;
+import game.player.AbstractPlayer;
 
 public abstract class AbstractGameEvent
 {
 	/** The player who started the action */
-	public final HanabiGame.PlayerIdentifier actor;
+	public final AbstractPlayer actor;
 	
 	/**
 	 * @param actor The player who is executing the action
 	 */
-	public AbstractGameEvent(HanabiGame.PlayerIdentifier actor)
+	public AbstractGameEvent(AbstractPlayer actor)
 	{
 		this.actor = actor;
 	}

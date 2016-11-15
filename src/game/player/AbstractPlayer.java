@@ -1,15 +1,14 @@
 package game.player;
 
 import game.logic.HanabiGame;
-import game.logic.event.AbstractEvent;
-import game.player.move.PlayerMove;
+import game.logic.event.AbstractGameEvent;
+import game.player.move.AbstractPlayerMove;
 
 public abstract class AbstractPlayer
 {
-	private HanabiGame game;
-	private HanabiGame.PlayerIdentifier selfIdentifier;
+	protected HanabiGame.PlayerInterface playerInterface;
 	
-	private String name;
+	protected String name;
 	
 	public AbstractPlayer(String name)
 	{
@@ -21,12 +20,24 @@ public abstract class AbstractPlayer
 	 *
 	 * @param event The event that took place
 	 */
-	abstract void onEvent(AbstractEvent event);
+	public abstract void onEvent(AbstractGameEvent event);
 	
 	/**
 	 * Request that the player make a move.
 	 *
 	 * @return The move that this player wants to make
 	 */
-	abstract PlayerMove getNextMove();
+	public abstract AbstractPlayerMove getNextMove();
+	
+	/**
+	 * Signals the player that a move has failed to execute. Depending on the implementation, this method may or may not do anything.
+	 *
+	 * @param move The move that has failed to execute
+	 */
+	public abstract void onFailedMove(AbstractPlayerMove move);
+	
+	public void setPlayerInterface(HanabiGame.PlayerInterface playerInterface)
+	{
+		this.playerInterface = playerInterface;
+	}
 }
