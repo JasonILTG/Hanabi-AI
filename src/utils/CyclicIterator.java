@@ -15,13 +15,22 @@ public class CyclicIterator<T>
 	
 	public CyclicIterator(List<T> listIn)
 	{
+		this(listIn, 0);
+	}
+	
+	/**
+	 * Initialize the iterator at a given index. The next item that this iterator will return is the item in the list at the given index.
+	 */
+	public CyclicIterator(List<T> listIn, int startIndex)
+	{
 		internalList = listIn;
-		internalIterator = listIn.iterator();
+		internalIterator = listIn.listIterator(startIndex);
 	}
 	
 	@Override
 	public boolean hasNext()
 	{
+		// Always has next.
 		return true;
 	}
 	

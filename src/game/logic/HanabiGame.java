@@ -92,9 +92,17 @@ public class HanabiGame
 			return handMap.get(player).getProtected(player == requester);
 		}
 		
-		private AbstractPlayer getCurrentPlayer()
+		public AbstractPlayer getCurrentPlayer()
 		{
 			return currentPlayer;
+		}
+		
+		/**
+		 * @return An iterator containing the order in which the players take turn, starting at the player who made the request.
+		 */
+		public CyclicIterator<AbstractPlayer> getPlayerOrder()
+		{
+			return new CyclicIterator<AbstractPlayer>(orderedPlayers, orderedPlayers.indexOf(requester));
 		}
 	}
 	
