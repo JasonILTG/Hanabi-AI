@@ -36,6 +36,11 @@ public abstract class AbstractPlayer
 	 */
 	public abstract void onFailedMove(AbstractPlayerMove move);
 	
+	/**
+	 * Signals the player that the game has ended.
+	 */
+	public abstract void onGameEnd();
+	
 	public void setPlayerInterface(HanabiGame.PlayerInterface playerInterface)
 	{
 		this.playerInterface = playerInterface;

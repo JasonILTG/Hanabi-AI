@@ -435,10 +435,13 @@ public class HanabiGame
 	private void onGameEnd(GameEndEvent gameEndEvent)
 	{
 		gameInProgress = false;
+		for (AbstractPlayer player : orderedPlayers)
+		{
+			player.onGameEnd();
+		}
 	}
 	
-	// TODO implement more game logic
-	public void play()
+	private void play()
 	{
 		startGame();
 		
@@ -453,6 +456,11 @@ public class HanabiGame
 		onGameEnd(gameEnd);
 	}
 	
+	/**
+	 * Plays the game once and calculates the final score.
+	 *
+	 * @return The final score in the game
+	 */
 	public int playAndGetScore()
 	{
 		play();
