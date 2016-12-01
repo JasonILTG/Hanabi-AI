@@ -275,8 +275,19 @@ public class HanabiGame
 			DiscardMove discardMove = (DiscardMove) move;
 			
 			// Discard from the player's hand
-			Card cardDiscarded = getHand(currentPlayer).removeCard(discardMove.index).card;
-			discards.addCard(cardDiscarded);
+			// Null check
+			HintedCard retrievedCard = getHand(currentPlayer).removeCard(discardMove.index);
+			Card cardDiscarded;
+			if (retrievedCard != null)
+			{
+				cardDiscarded = retrievedCard.card;
+				discards.addCard(cardDiscarded);
+			}
+			else
+			{
+				currentPlayer.onFailedMove(move, FailMoveReason.INVALID_INDEX);
+				return false;
+			}
 			
 			// Players gain 1 extra clue
 			clues++;
@@ -296,14 +307,14 @@ public class HanabiGame
 			// Check if there are enough hints left in the pool
 			if (clues <= 0)
 			{
-				currentPlayer.onFailedMove(clueMove);
+				currentPlayer.onFailedMove(clueMove, FailMoveReason.NO_CLUES);
 				return false;
 			}
 			
-			// Use up 1 clue and gives the player a clue
-			clues--;
 			if (clueMove instanceof ClueMove.Color)
 			{
+				// Use up 1 clue and gives the player a clue
+				clues--;
 				ClueMove.Color colorClue = (ClueMove.Color) clueMove;
 				getHand(clueMove.target).applyClue(colorClue.clueColor);
 				
@@ -312,14 +323,19 @@ public class HanabiGame
 			}
 			else if (clueMove instanceof ClueMove.Number)
 			{
+				// Use up 1 clue and gives the player a clue
+				clues--;
 				ClueMove.Number numberClue = (ClueMove.Number) clueMove;
 				getHand(currentPlayer).applyClue(numberClue.clueNumber);
 				
 				// Fire the event
 				fireEvent(new ClueEvent.Number(currentPlayer, clueMove.target, numberClue.clueNumber));
 			}
-			
-			// Draw a card to compensate the
+			else
+			{
+				currentPlayer.onFailedMove(move, FailMoveReason.UNKNOWN);
+				return false;
+			}
 			
 			return true;
 		}
@@ -327,6 +343,12 @@ public class HanabiGame
 		{
 			PlayMove playMove = (PlayMove) move;
 			HintedCard cardPlayed = getHand(currentPlayer).removeCard(playMove.index);
+			
+			if (cardPlayed == null)
+			{
+				currentPlayer.onFailedMove(move, FailMoveReason.INVALID_INDEX);
+				return false;
+			}
 			
 			if (played.canPlay(cardPlayed.card))
 			{

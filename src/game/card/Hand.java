@@ -34,7 +34,14 @@ public class Hand
 	
 	public HintedCard removeCard(int pos)
 	{
-		return cards.remove(pos);
+		try
+		{
+			return cards.remove(pos);
+		}
+		catch (IndexOutOfBoundsException ex)
+		{
+			return null;
+		}
 	}
 	
 	/**

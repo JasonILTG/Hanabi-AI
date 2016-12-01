@@ -1,5 +1,6 @@
 package game.player;
 
+import game.logic.FailMoveReason;
 import game.logic.HanabiGame;
 import game.logic.event.AbstractGameEvent;
 import game.player.move.AbstractPlayerMove;
@@ -34,13 +35,8 @@ public abstract class AbstractPlayer
 	 *
 	 * @param move The move that has failed to execute
 	 */
-	public abstract void onFailedMove(AbstractPlayerMove move);
-	
-	/**
-	 * Signals the player that the game has ended.
-	 */
-	public abstract void onGameEnd();
-	
+	public abstract void onFailedMove(AbstractPlayerMove move, FailMoveReason reason);
+		
 	public void setPlayerInterface(HanabiGame.PlayerInterface playerInterface)
 	{
 		this.playerInterface = playerInterface;
