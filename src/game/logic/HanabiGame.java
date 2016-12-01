@@ -13,6 +13,7 @@ import game.logic.event.ClueEvent;
 import game.logic.event.DiscardEvent;
 import game.logic.event.DrawEvent;
 import game.logic.event.GameEndEvent;
+import game.logic.event.GameStartEvent;
 import game.logic.event.PlayEvent;
 import game.player.AbstractPlayer;
 import game.player.move.AbstractPlayerMove;
@@ -211,6 +212,9 @@ public class HanabiGame
 			
 			handMap.put(player, playerHand);
 		}
+		
+		// Fire game start event
+		fireEvent(new GameStartEvent());
 	}
 	
 	/**
@@ -443,10 +447,7 @@ public class HanabiGame
 	private void onGameEnd(GameEndEvent gameEndEvent)
 	{
 		gameInProgress = false;
-		for (AbstractPlayer player : orderedPlayers)
-		{
-			player.onGameEnd();
-		}
+		fireEvent(gameEndEvent);
 	}
 	
 	private void play()
