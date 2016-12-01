@@ -235,6 +235,7 @@ public class HanabiGame
 	{
 		// Go to the next player
 		currentPlayer = playerIterator.next();
+		currentPlayer.onTurnStart();
 		
 		// Execute the next player's move
 		AbstractPlayerMove nextMove;
@@ -258,6 +259,8 @@ public class HanabiGame
 			}
 		}
 		
+		// End the turn
+		currentPlayer.onTurnEnd();
 		// Game ending checks executed between turns.
 	}
 	

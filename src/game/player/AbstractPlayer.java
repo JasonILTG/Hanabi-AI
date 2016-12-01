@@ -31,6 +31,16 @@ public abstract class AbstractPlayer
 	public abstract AbstractPlayerMove getNextMove();
 	
 	/**
+	 * Called when the player starts a new turn, meaning that the player has control of the game now.
+	 */
+	public abstract void onTurnStart();
+	
+	/**
+	 * Called when the player ends its turn, giving control to other players.
+	 */
+	public abstract void onTurnEnd();
+	
+	/**
 	 * Signals the player that a move has failed to execute. Depending on the implementation, this method may or may not do anything.
 	 *
 	 * @param move The move that has failed to execute
